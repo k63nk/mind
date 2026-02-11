@@ -5,9 +5,12 @@ interface MaltProps {
   onBack: () => void;
   onLogout: () => void;
   onSelectExercise: (id: string) => void;
+  onNavigateToApplications: () => void;
+  // Added onNavigateToProfile to fix the error reported in App.tsx
+  onNavigateToProfile: () => void;
 }
 
-const Malt: React.FC<MaltProps> = ({ onBack, onLogout, onSelectExercise }) => {
+const Malt: React.FC<MaltProps> = ({ onBack, onLogout, onSelectExercise, onNavigateToApplications, onNavigateToProfile }) => {
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0f14] text-slate-100 font-display">
       {/* Sidebar */}
@@ -17,43 +20,49 @@ const Malt: React.FC<MaltProps> = ({ onBack, onLogout, onSelectExercise }) => {
             <span className="material-symbols-outlined">psychology</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white uppercase italic">MindTrace</h1>
+            <h1 className="text-xl font-bold tracking-tight text-white uppercase italic text-left">MindTrace</h1>
             <p className="text-[10px] text-[#1392ec] font-bold tracking-widest uppercase">Student Portal</p>
           </div>
         </div>
         <nav className="flex-1 px-4 space-y-1">
           <button 
             onClick={onBack}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors text-left"
           >
             <span className="material-symbols-outlined">dashboard</span>
             <span className="text-sm">Bảng điều khiển</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors">
+          <button 
+            onClick={onNavigateToApplications}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors text-left"
+          >
             <span className="material-symbols-outlined">work_history</span>
             <span className="text-sm">Đơn ứng tuyển</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#1392ec] text-white font-semibold">
+          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#1392ec] text-white font-semibold text-left shadow-lg shadow-[#1392ec]/20">
             <span className="material-symbols-outlined">science</span>
             <span className="text-sm">Kho luyện tập AI</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors">
+          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors text-left">
             <span className="material-symbols-outlined">search</span>
             <span className="text-sm">Việc làm mới</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors">
+          <button 
+            onClick={onNavigateToProfile}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors text-left"
+          >
             <span className="material-symbols-outlined">person</span>
             <span className="text-sm">Hồ sơ cá nhân</span>
           </button>
         </nav>
         <div className="p-4 border-t border-slate-800 space-y-1">
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors">
+          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors text-left">
             <span className="material-symbols-outlined">settings</span>
             <span className="text-sm">Cài đặt</span>
           </button>
           <button 
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-900/10 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-900/10 transition-colors text-left"
           >
             <span className="material-symbols-outlined">logout</span>
             <span className="text-sm font-medium">Đăng xuất</span>
@@ -65,7 +74,7 @@ const Malt: React.FC<MaltProps> = ({ onBack, onLogout, onSelectExercise }) => {
       <main className="flex-1 overflow-y-auto bg-[#0a0f14]">
         <header className="sticky top-0 z-10 flex items-center justify-between px-8 py-4 bg-[#0a0f14]/80 backdrop-blur-md border-b border-slate-800">
           <div className="flex flex-col">
-            <h2 className="text-2xl font-bold text-white">Kho luyện tập AI</h2>
+            <h2 className="text-2xl font-bold text-white tracking-tight">Kho luyện tập AI</h2>
             <p className="text-sm text-slate-400">Nâng cao kỹ năng giải quyết tình huống thực tế với sự hỗ trợ của AI</p>
           </div>
           <div className="flex items-center gap-4">
@@ -125,7 +134,7 @@ const Malt: React.FC<MaltProps> = ({ onBack, onLogout, onSelectExercise }) => {
                 { id: 'momo-1', company: 'Momo E-Wallet', title: 'Tăng tỷ lệ chuyển đổi nạp tiền điện thoại', desc: 'Cải thiện UI/UX của tính năng top-up để giảm thiểu số bước thao tác và tăng trải nghiệm người dùng.', tag: 'Product Design', time: '30 phút', difficulty: 'TRUNG BÌNH', diffColor: 'orange', status: null },
               ].map((item, idx) => (
                 <div key={item.id} className="bg-[#111821] border border-slate-800 rounded-2xl overflow-hidden hover:border-[#1392ec]/50 transition-all flex flex-col group shadow-lg">
-                  <div className="h-40 bg-slate-800 relative">
+                  <div className="h-40 bg-slate-800 relative overflow-hidden">
                     <div className="absolute inset-0 bg-cover bg-center opacity-40 transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url('https://picsum.photos/seed/${idx + 50}/600/300')` }}></div>
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111821] to-transparent"></div>
                     <div className="absolute top-4 left-4">
@@ -191,7 +200,7 @@ const Malt: React.FC<MaltProps> = ({ onBack, onLogout, onSelectExercise }) => {
                 <span className="material-symbols-outlined text-4xl text-[#1392ec] fill-1">auto_awesome</span>
               </div>
               <div>
-                <h4 className="text-2xl font-black mb-2 text-white">Thử thách mới mỗi tuần!</h4>
+                <h4 className="text-2xl font-black mb-2 text-white tracking-tight">Thử thách mới mỗi tuần!</h4>
                 <p className="text-slate-300 max-w-lg text-sm font-medium">Chúng tôi liên tục cập nhật các bài toán thực tế để bạn rèn luyện tư duy thực chiến.</p>
               </div>
             </div>

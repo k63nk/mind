@@ -5,7 +5,9 @@ import AICVDemo from './components/AICVDemo';
 import LoginPage from './components/LoginPage';
 import SV from './components/SV';
 import Malt from './components/malt';
-import MA1_LT from './components/MA1_LT'; // Giữ lại cho chi tiết bài làm nếu cần, hoặc xóa nếu malt thay thế hoàn toàn
+import MA1_LT from './components/MA1_LT';
+import DonUngTuyen from './components/DonUngTuyen';
+import HoSoCaNhan from './components/HoSoCaNhan';
 import { Step, Feature } from './types';
 
 const steps: Step[] = [
@@ -24,7 +26,7 @@ const features: Feature[] = [
 ];
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'login' | 'sv_dashboard' | 'exercise_library' | 'exercise_workspace'>('home');
+  const [view, setView] = useState<'home' | 'login' | 'sv_dashboard' | 'exercise_library' | 'exercise_workspace' | 'applications_management' | 'personal_profile'>('home');
 
   const handleLoginSuccess = (role: 'student' | 'business') => {
     if (role === 'student') {
@@ -43,6 +45,20 @@ const App: React.FC = () => {
       <SV 
         onLogout={() => setView('home')} 
         onStartPractice={() => setView('exercise_library')} 
+        onNavigateToApplications={() => setView('applications_management')}
+        onNavigateToProfile={() => setView('personal_profile')}
+      />
+    );
+  }
+
+  if (view === 'applications_management') {
+    return (
+      <DonUngTuyen 
+        onBack={() => setView('sv_dashboard')}
+        onLogout={() => setView('home')}
+        onNavigateToExercises={() => setView('exercise_library')}
+        onStartTest={() => setView('exercise_workspace')}
+        onNavigateToProfile={() => setView('personal_profile')}
       />
     );
   }
@@ -53,12 +69,25 @@ const App: React.FC = () => {
         onBack={() => setView('sv_dashboard')} 
         onLogout={() => setView('home')} 
         onSelectExercise={() => setView('exercise_workspace')}
+        onNavigateToApplications={() => setView('applications_management')}
+        onNavigateToProfile={() => setView('personal_profile')}
       />
     );
   }
 
   if (view === 'exercise_workspace') {
     return <MA1_LT onBack={() => setView('exercise_library')} />;
+  }
+
+  if (view === 'personal_profile') {
+    return (
+      <HoSoCaNhan 
+        onBack={() => setView('sv_dashboard')}
+        onLogout={() => setView('home')}
+        onNavigateToApplications={() => setView('applications_management')}
+        onNavigateToExercises={() => setView('exercise_library')}
+      />
+    );
   }
 
   return (
@@ -74,11 +103,11 @@ const App: React.FC = () => {
             <span className="flex h-2 w-2 rounded-full bg-primary mr-2 animate-pulse"></span>
             AI-Powered Recruitment Platform
           </div>
-          <h1 className="text-5xl md:text-8xl font-black mb-12 leading-tight tracking-tight">
+          <h1 className="text-5xl md:text-8xl font-black mb-12 leading-tight tracking-tight text-slate-100 uppercase italic">
             KẾT NỐI TRI THỨC <br/>
             <span className="gradient-text uppercase italic">Kiến tạo sự nghiệp</span>
           </h1>
-          <p className="text-xl md:text-2xl text-slate-500 dark:text-slate-400 mb-16 max-w-3xl mx-auto leading-relaxed font-medium">
+          <p className="text-xl md:text-2xl text-slate-500 mb-16 max-w-3xl mx-auto leading-relaxed font-medium">
             Nền tảng tuyển dụng đột phá kết nối sinh viên và doanh nghiệp thông qua giải quyết các bài toán thực tế tích hợp công nghệ AI.
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
@@ -154,7 +183,7 @@ const App: React.FC = () => {
       <AICVDemo />
 
       {/* Footer */}
-      <footer className="py-24 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-white/5">
+      <footer className="py-24 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-white/5 text-slate-100">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
             <div className="col-span-1 md:col-span-1">
@@ -165,11 +194,6 @@ const App: React.FC = () => {
                 <span className="text-xl font-extrabold tracking-tight uppercase dark:text-white">Mind<span className="gradient-text">Trace</span></span>
               </div>
               <p className="text-slate-500 text-sm leading-relaxed mb-8">Nền tảng kết nối nhân tài trẻ với cơ hội nghề nghiệp thông qua thực tế và công nghệ.</p>
-              <div className="flex gap-4">
-                <a href="#" className="w-10 h-10 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all text-slate-500">
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path></svg>
-                </a>
-              </div>
             </div>
             <div>
               <h4 className="font-bold mb-8 dark:text-white">Sinh viên</h4>
