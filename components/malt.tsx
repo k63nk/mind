@@ -1,7 +1,11 @@
 
 import React from 'react';
+// Import User type
+import { User } from '../types';
 
 interface MaltProps {
+  // Added missing currentUser property
+  currentUser: User;
   onBack: () => void;
   onLogout: () => void;
   onSelectExercise: (id: string) => void;
@@ -10,7 +14,7 @@ interface MaltProps {
   onNavigateToProfile: () => void;
 }
 
-const Malt: React.FC<MaltProps> = ({ onBack, onLogout, onSelectExercise, onNavigateToApplications, onNavigateToProfile }) => {
+const Malt: React.FC<MaltProps> = ({ currentUser, onBack, onLogout, onSelectExercise, onNavigateToApplications, onNavigateToProfile }) => {
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0f14] text-slate-100 font-display">
       {/* Sidebar */}
@@ -82,7 +86,12 @@ const Malt: React.FC<MaltProps> = ({ onBack, onLogout, onSelectExercise, onNavig
               <span className="material-symbols-outlined">notifications</span>
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#0a0f14]"></span>
             </button>
-            <div className="h-10 w-10 rounded-full bg-slate-700 bg-cover bg-center border border-slate-600 shadow-md" style={{ backgroundImage: `url('https://api.dicebear.com/7.x/avataaars/svg?seed=Lucky')` }}></div>
+            {/* Use currentUser avatar */}
+            <div 
+              onClick={onNavigateToProfile}
+              className="h-10 w-10 rounded-full bg-slate-700 bg-cover bg-center border border-slate-600 shadow-md cursor-pointer hover:border-[#1392ec] transition-all" 
+              style={{ backgroundImage: `url('${currentUser.avatar}')` }}
+            ></div>
           </div>
         </header>
 
