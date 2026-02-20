@@ -10,9 +10,10 @@ interface DonUngTuyenProps {
   onNavigateToExercises: () => void;
   onStartTest: (id: string) => void;
   onNavigateToProfile: () => void;
+  onNavigateToNewJobs: () => void;
 }
 
-const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout, onNavigateToExercises, onStartTest, onNavigateToProfile }) => {
+const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout, onNavigateToExercises, onStartTest, onNavigateToProfile, onNavigateToNewJobs }) => {
   const [apps, setApps] = useState<Application[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
 
@@ -59,7 +60,10 @@ const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout
             <span className="material-symbols-outlined">science</span>
             <span className="text-sm">Kho luyện tập AI</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors text-left">
+          <button 
+            onClick={onNavigateToNewJobs}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors text-left"
+          >
             <span className="material-symbols-outlined">search</span>
             <span className="text-sm">Việc làm mới</span>
           </button>

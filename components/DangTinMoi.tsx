@@ -1,0 +1,333 @@
+import React, { useState } from 'react';
+import { User } from '../types';
+
+interface DangTinMoiProps {
+  currentUser: User;
+  onBack: () => void;
+  onLogout: () => void;
+  onNavigateToCandidateManagement: () => void;
+}
+
+const DangTinMoi: React.FC<DangTinMoiProps> = ({ 
+  currentUser, 
+  onBack, 
+  onLogout,
+  onNavigateToCandidateManagement
+}) => {
+  const [step, setStep] = useState(1);
+  const [jobTitle, setJobTitle] = useState('');
+  const [jd, setJd] = useState('');
+  const [keywords, setKeywords] = useState<string[]>(['ReactJS', 'Tailwind CSS', 'TypeScript']);
+  const [minScore, setMinScore] = useState(75);
+  const [newKeyword, setNewKeyword] = useState('');
+
+  const addKeyword = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && newKeyword.trim()) {
+      if (!keywords.includes(newKeyword.trim())) {
+        setKeywords([...keywords, newKeyword.trim()]);
+      }
+      setNewKeyword('');
+    }
+  };
+
+  const removeKeyword = (kw: string) => {
+    setKeywords(keywords.filter(k => k !== kw));
+  };
+
+  return (
+    <div className="bg-[#0f172a] text-slate-100 antialiased h-screen flex overflow-hidden font-display">
+      {/* Sidebar Navigation */}
+      <aside className="w-72 bg-[#1e293b] border-r border-[#334155] flex flex-col h-full shrink-0">
+        <div className="p-6 flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#1392ec] rounded-xl flex items-center justify-center text-white shadow-lg shadow-[#1392ec]/20">
+            <span className="material-symbols-outlined text-2xl font-bold">psychology</span>
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-[#1392ec] leading-none uppercase italic">MindTrace</h1>
+            <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mt-1">Recruit Pro</p>
+          </div>
+        </div>
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
+          <div className="py-4">
+            <p className="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Menu chính</p>
+            <button 
+              onClick={onBack}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-all text-left"
+            >
+              <span className="material-symbols-outlined">dashboard</span>
+              <span className="text-sm uppercase tracking-wider font-bold">Tổng quan</span>
+            </button>
+            <button 
+              onClick={onBack} // For now, back to management
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-all text-left mt-1"
+            >
+              <span className="material-symbols-outlined">article</span>
+              <span className="text-sm uppercase tracking-wider font-bold">Tin tuyển dụng</span>
+            </button>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#1392ec] text-white font-bold transition-all shadow-lg shadow-[#1392ec]/20 text-left mt-1">
+              <span className="material-symbols-outlined">add_box</span>
+              <span className="text-sm uppercase tracking-wider">Đăng tin mới</span>
+            </button>
+            <button 
+              onClick={onNavigateToCandidateManagement}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-all text-left mt-1"
+            >
+              <span className="material-symbols-outlined">group</span>
+              <span className="text-sm uppercase tracking-wider font-bold">Quản lý ứng viên</span>
+            </button>
+          </div>
+          <div className="py-4 border-t border-slate-800">
+            <p className="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Hỗ trợ & Cài đặt</p>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-all text-left">
+              <span className="material-symbols-outlined">analytics</span>
+              <span className="text-sm uppercase tracking-wider font-bold">Báo cáo chi tiết</span>
+            </button>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-all text-left mt-1">
+              <span className="material-symbols-outlined">settings</span>
+              <span className="text-sm uppercase tracking-wider font-bold">Cài đặt doanh nghiệp</span>
+            </button>
+            <button 
+              onClick={onLogout}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-900/10 transition-all text-left mt-1"
+            >
+              <span className="material-symbols-outlined">logout</span>
+              <span className="text-sm uppercase tracking-wider font-bold">Đăng xuất</span>
+            </button>
+          </div>
+        </nav>
+        {/* Company Footer Info */}
+        <div className="p-4 border-t border-[#334155] bg-[#0f172a]/50">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-slate-700 bg-cover bg-center border border-slate-600" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDaEGIiELh660Lm_HzrseIe11KUOyr_riTO-NuyflYTy3P0lbQcNnKrzu7wBnRDcg9Z7jt5-qeCK9EXrF09FYJgMegUQOMDtASqcijHQj-Sv-geeb-aOZvnWH00x-r4ZYS5wsjI5hGMR14n-xEluadcsy_kilM0e0_iyaJ6z_bqFcR38RaNcdLQMXb01TYp58wT3tRC68M6jjJa6eJvjy47UFY70zi7Bx_7UEQKxZr7LxcDBUDV_aKZuk5BjsVb-F4SQBj9y0mWJMc')" }}></div>
+            <div className="overflow-hidden">
+              <p className="text-xs font-black uppercase tracking-tight truncate text-white">TechNova Global</p>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-[#1392ec]">Gói Enterprise</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col overflow-hidden bg-[#0f172a]">
+        {/* Header */}
+        <header className="h-16 flex items-center justify-between px-8 bg-[#0f172a] border-b border-[#334155] flex-shrink-0">
+          <div>
+            <h2 className="text-2xl font-black text-white uppercase italic tracking-tight leading-none">Tạo bài toán tuyển dụng mới</h2>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Thiết lập quy trình đánh giá tự động bằng AI</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <button className="p-2 text-slate-400 hover:bg-[#1e293b] rounded-full relative transition-colors">
+              <span className="material-symbols-outlined">notifications</span>
+              <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-[#0f172a]"></span>
+            </button>
+            <div className="h-8 w-px bg-[#334155] mx-2"></div>
+            <div className="flex items-center gap-3 cursor-pointer group">
+              <div className="text-right hidden md:block">
+                <p className="text-xs font-black uppercase tracking-tight text-white group-hover:text-[#1392ec] transition-colors">{currentUser.name}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Quản trị viên</p>
+              </div>
+              <div 
+                className="size-9 rounded-full bg-slate-700 bg-cover bg-center border-2 border-[#1392ec] shadow-lg shadow-[#1392ec]/10" 
+                style={{ backgroundImage: `url('${currentUser.avatar}')` }}
+              ></div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Body Content */}
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          <div className="max-w-4xl mx-auto space-y-10">
+            {/* Stepper */}
+            <div className="relative flex items-center justify-between mb-12 px-10">
+              <div className="absolute top-1/2 left-0 w-full h-0.5 bg-[#1e293b] -translate-y-1/2 z-0"></div>
+              <div 
+                className="absolute top-1/2 left-0 h-0.5 bg-[#1392ec] -translate-y-1/2 z-0 transition-all duration-500 shadow-[0_0_10px_rgba(19,146,236,0.5)]" 
+                style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }}
+              ></div>
+              
+              {[1, 2, 3].map((s) => (
+                <div key={s} className="relative z-10 flex flex-col items-center gap-3">
+                  <div className={`size-12 rounded-full flex items-center justify-center font-black text-lg ring-8 ring-[#0f172a] transition-all duration-300 ${
+                    step >= s ? 'bg-[#1392ec] text-white shadow-lg shadow-[#1392ec]/30' : 'bg-[#1e293b] text-slate-500 border-2 border-[#334155]'
+                  }`}>
+                    {step > s ? <span className="material-symbols-outlined">check</span> : s}
+                  </div>
+                  <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${step >= s ? 'text-[#1392ec]' : 'text-slate-600'}`}>
+                    {s === 1 ? 'Thông tin' : s === 2 ? 'Tiêu chí AI' : 'Đề bài'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Form Steps */}
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {step === 1 && (
+                <section className="bg-[#1e293b] rounded-2xl border border-[#334155] p-8 shadow-2xl">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="p-2.5 rounded-xl bg-[#1392ec]/10 text-[#1392ec]">
+                      <span className="material-symbols-outlined">work</span>
+                    </div>
+                    <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Bước 1: Thông tin công việc</h3>
+                  </div>
+                  <div className="space-y-8">
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">Tên vị trí tuyển dụng</label>
+                      <input 
+                        className="w-full bg-[#0f172a] border border-[#334155] rounded-xl px-5 py-4 text-white focus:border-[#1392ec] outline-none transition-all placeholder:text-slate-700 font-bold" 
+                        placeholder="Ví dụ: Senior Frontend Developer (React/Tailwind)" 
+                        type="text"
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">Mô tả công việc (JD)</label>
+                      <div className="bg-[#0f172a] border border-[#334155] rounded-xl overflow-hidden">
+                        <div className="flex items-center gap-2 p-3 border-b border-[#334155] bg-[#1e293b]/50">
+                          <button className="p-2 hover:bg-[#334155] rounded-lg transition-colors text-slate-400"><span className="material-symbols-outlined text-sm">format_bold</span></button>
+                          <button className="p-2 hover:bg-[#334155] rounded-lg transition-colors text-slate-400"><span className="material-symbols-outlined text-sm">format_italic</span></button>
+                          <button className="p-2 hover:bg-[#334155] rounded-lg transition-colors text-slate-400"><span className="material-symbols-outlined text-sm">format_list_bulleted</span></button>
+                          <div className="w-px h-4 bg-[#334155] mx-2"></div>
+                          <button className="p-2 hover:bg-[#334155] rounded-lg transition-colors text-slate-400"><span className="material-symbols-outlined text-sm">link</span></button>
+                        </div>
+                        <textarea 
+                          className="w-full bg-transparent border-none focus:ring-0 text-slate-200 p-5 resize-none min-h-[200px] font-medium text-sm leading-relaxed" 
+                          placeholder="Nhập chi tiết yêu cầu công việc, quyền lợi và kỹ năng cần thiết..." 
+                          rows={8}
+                          value={jd}
+                          onChange={(e) => setJd(e.target.value)}
+                        ></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {step === 2 && (
+                <section className="bg-[#1e293b] rounded-2xl border border-[#334155] p-8 shadow-2xl">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="p-2.5 rounded-xl bg-[#1392ec]/10 text-[#1392ec]">
+                      <span className="material-symbols-outlined">psychology</span>
+                    </div>
+                    <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Bước 2: Thiết lập tiêu chí AI</h3>
+                  </div>
+                  <div className="space-y-10">
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">Từ khóa kỹ năng (Keywords)</label>
+                      <div className="flex flex-wrap gap-2 p-4 bg-[#0f172a] border border-[#334155] rounded-xl">
+                        {keywords.map((kw) => (
+                          <span key={kw} className="inline-flex items-center gap-2 bg-[#1392ec]/10 text-[#1392ec] px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-[#1392ec]/20">
+                            {kw} 
+                            <button onClick={() => removeKeyword(kw)} className="material-symbols-outlined text-[14px] hover:text-white transition-colors">close</button>
+                          </span>
+                        ))}
+                        <input 
+                          className="bg-transparent border-none focus:ring-0 text-sm p-1 flex-1 min-w-[150px] text-white placeholder:text-slate-700 font-bold" 
+                          placeholder="Thêm từ khóa..." 
+                          type="text"
+                          value={newKeyword}
+                          onChange={(e) => setNewKeyword(e.target.value)}
+                          onKeyDown={addKeyword}
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-600 mt-3 italic font-bold uppercase tracking-widest">AI sẽ ưu tiên các CV có chứa các từ khóa này.</p>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-end mb-6">
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Điểm CV tối thiểu</label>
+                        <span className="text-[#1392ec] font-black text-3xl italic">{minScore}<span className="text-sm not-italic text-slate-600 ml-1">/100</span></span>
+                      </div>
+                      <input 
+                        className="w-full h-2 bg-[#0f172a] rounded-full appearance-none cursor-pointer accent-[#1392ec] border border-[#334155]" 
+                        max="100" 
+                        min="0" 
+                        type="range" 
+                        value={minScore}
+                        onChange={(e) => setMinScore(parseInt(e.target.value))}
+                      />
+                      <div className="flex justify-between mt-4 text-[9px] text-slate-600 font-black uppercase tracking-[0.2em]">
+                        <span>Lỏng lẻo</span>
+                        <span>Chặt chẽ</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {step === 3 && (
+                <section className="bg-[#1e293b] rounded-2xl border border-[#334155] p-8 shadow-2xl">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="p-2.5 rounded-xl bg-[#1392ec]/10 text-[#1392ec]">
+                      <span className="material-symbols-outlined">upload_file</span>
+                    </div>
+                    <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Bước 3: Đề bài & Deadline</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tải lên bài Test (Case Study)</label>
+                      <div className="border-2 border-dashed border-[#334155] rounded-2xl p-10 flex flex-col items-center justify-center text-center hover:border-[#1392ec]/50 transition-all group cursor-pointer bg-[#0f172a]/50">
+                        <div className="size-16 rounded-full bg-[#1e293b] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-xl">
+                          <span className="material-symbols-outlined text-[#1392ec] text-3xl">picture_as_pdf</span>
+                        </div>
+                        <p className="text-sm font-black text-white uppercase tracking-tight mb-1">Click để tải lên</p>
+                        <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Hỗ trợ PDF (Tối đa 10MB)</p>
+                      </div>
+                    </div>
+                    <div className="space-y-6">
+                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Hạn chót nộp bài (Deadline)</label>
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">calendar_today</span>
+                        <input className="w-full bg-[#0f172a] border border-[#334155] rounded-xl pl-12 pr-4 py-4 text-white focus:border-[#1392ec] outline-none transition-all font-bold uppercase text-xs tracking-widest" type="date"/>
+                      </div>
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">schedule</span>
+                        <input className="w-full bg-[#0f172a] border border-[#334155] rounded-xl pl-12 pr-4 py-4 text-white focus:border-[#1392ec] outline-none transition-all font-bold uppercase text-xs tracking-widest" type="time"/>
+                      </div>
+                      <div className="p-4 bg-[#1392ec]/5 border border-[#1392ec]/10 rounded-xl flex items-start gap-4">
+                        <span className="material-symbols-outlined text-[#1392ec] text-sm mt-0.5">info</span>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">Hệ thống sẽ tự động đóng link nộp bài đúng thời gian quy định.</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Bottom Action Buttons */}
+              <div className="flex items-center justify-between pt-10 border-t border-[#334155]">
+                <button 
+                  onClick={onBack}
+                  className="px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] text-slate-500 hover:text-white hover:bg-[#1e293b] transition-all flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                  Hủy bỏ
+                </button>
+                <div className="flex items-center gap-4">
+                  {step > 1 && (
+                    <button 
+                      onClick={() => setStep(step - 1)}
+                      className="px-8 py-3.5 bg-[#1e293b] border border-[#334155] rounded-xl font-black text-[10px] uppercase tracking-[0.2em] text-slate-300 hover:border-[#1392ec]/50 transition-all"
+                    >
+                      Quay lại
+                    </button>
+                  )}
+                  <button className="px-8 py-3.5 bg-[#1e293b] border border-[#334155] rounded-xl font-black text-[10px] uppercase tracking-[0.2em] text-slate-300 hover:border-[#1392ec]/50 transition-all">
+                    Lưu bản nháp
+                  </button>
+                  <button 
+                    onClick={() => step < 3 ? setStep(step + 1) : onBack()}
+                    className="px-10 py-3.5 bg-[#1392ec] rounded-xl font-black text-[10px] uppercase tracking-[0.2em] text-white hover:bg-[#1181d1] shadow-xl shadow-[#1392ec]/20 transition-all flex items-center gap-3 active:scale-[0.98]"
+                  >
+                    {step === 3 ? 'Hoàn tất & Đăng tin' : 'Tiếp tục'}
+                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default DangTinMoi;

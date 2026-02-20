@@ -8,13 +8,23 @@ import Malt from './components/malt';
 import MA1_LT from './components/MA1_LT';
 import DonUngTuyen from './components/DonUngTuyen';
 import HoSoCaNhan from './components/HoSoCaNhan';
+import TimViecLam from './components/TimViecLam';
+import JobDetail from './components/JobDetail';
+import ApplyJobModal from './components/ApplyJobModal';
+import SuccessApply from './components/SuccessApply';
+import BusinessDashboard from './components/BusinessDashboard';
+import QuanLyTinTuyenDung from './components/QuanLyTinTuyenDung';
+import DangTinMoi from './components/DangTinMoi';
+import QuanLyUngVien from './components/QuanLyUngVien';
 import { backend } from './services/backendService';
 import { User } from './types';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'login' | 'sv_dashboard' | 'exercise_library' | 'exercise_workspace' | 'applications_management' | 'personal_profile'>('home');
+  const [view, setView] = useState<'home' | 'login' | 'sv_dashboard' | 'exercise_library' | 'exercise_workspace' | 'applications_management' | 'personal_profile' | 'new_jobs' | 'job_detail' | 'success_apply' | 'business_dashboard' | 'business_job_management' | 'business_post_job' | 'business_candidate_management'>('home');
   const [currentUser, setCurrentUser] = useState<User | null>(backend.getCurrentUser());
   const [isInitializing, setIsInitializing] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [showApplyModal, setShowApplyModal] = useState(false);
 
   useEffect(() => {
     const initDb = async () => {
@@ -30,7 +40,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (currentUser && view === 'home') {
-      setView(currentUser.role === 'student' ? 'sv_dashboard' : 'home');
+      setView(currentUser.role === 'student' ? 'sv_dashboard' : 'business_dashboard');
     }
   }, [currentUser]);
 
@@ -40,7 +50,7 @@ const App: React.FC = () => {
     if (role === 'student') {
       setView('sv_dashboard');
     } else {
-      alert('Giao diện doanh nghiệp đang phát triển!');
+      setView('business_dashboard');
     }
   };
 
@@ -48,6 +58,19 @@ const App: React.FC = () => {
     backend.logout();
     setCurrentUser(null);
     setView('home');
+  };
+
+  const handleApplySubmit = async (cvContent: string, message: string) => {
+    if (!currentUser || !selectedJobId) return;
+    
+    try {
+      await backend.createApplication(currentUser.id, selectedJobId, cvContent);
+      setShowApplyModal(false);
+      setView('success_apply');
+    } catch (error) {
+      console.error("Application error:", error);
+      alert("Đã có lỗi xảy ra khi nộp hồ sơ. Vui lòng thử lại.");
+    }
   };
 
   if (isInitializing) {
@@ -76,6 +99,7 @@ const App: React.FC = () => {
       onStartPractice={() => setView('exercise_library')} 
       onNavigateToApplications={() => setView('applications_management')}
       onNavigateToProfile={() => setView('personal_profile')}
+      onNavigateToNewJobs={() => setView('new_jobs')}
     />
   );
 
@@ -87,6 +111,7 @@ const App: React.FC = () => {
       onNavigateToExercises={() => setView('exercise_library')}
       onStartTest={() => setView('exercise_workspace')}
       onNavigateToProfile={() => setView('personal_profile')}
+      onNavigateToNewJobs={() => setView('new_jobs')}
     />
   );
 
@@ -98,6 +123,7 @@ const App: React.FC = () => {
       onSelectExercise={(id) => setView('exercise_workspace')}
       onNavigateToApplications={() => setView('applications_management')}
       onNavigateToProfile={() => setView('personal_profile')}
+      onNavigateToNewJobs={() => setView('new_jobs')}
     />
   );
 
@@ -110,6 +136,101 @@ const App: React.FC = () => {
       onLogout={handleLogout}
       onNavigateToApplications={() => setView('applications_management')}
       onNavigateToExercises={() => setView('exercise_library')}
+      onNavigateToNewJobs={() => setView('new_jobs')}
+    />
+  );
+
+  if (view === 'new_jobs' && currentUser) return (
+    <TimViecLam
+      currentUser={currentUser}
+      onBack={() => setView('sv_dashboard')}
+      onLogout={handleLogout}
+      onNavigateToApplications={() => setView('applications_management')}
+      onNavigateToExercises={() => setView('exercise_library')}
+      onNavigateToProfile={() => setView('personal_profile')}
+      onSelectJob={(id) => {
+        setSelectedJobId(id);
+        setView('job_detail');
+      }}
+    />
+  );
+
+  if (view === 'job_detail' && currentUser) return (
+    <>
+      <JobDetail
+        currentUser={currentUser}
+        jobId={selectedJobId}
+        onBack={() => setView('sv_dashboard')}
+        onLogout={handleLogout}
+        onNavigateToApplications={() => setView('applications_management')}
+        onNavigateToExercises={() => setView('exercise_library')}
+        onNavigateToProfile={() => setView('personal_profile')}
+        onNavigateToNewJobs={() => setView('new_jobs')}
+        onApply={() => setShowApplyModal(true)}
+      />
+      {showApplyModal && (
+        <ApplyJobModal 
+          currentUser={currentUser}
+          job={(() => {
+            const job = backend.getJobs().find(j => j.id === selectedJobId);
+            return {
+              id: selectedJobId || '',
+              title: job?.title || "Vị trí không xác định",
+              location: job?.location || "Địa điểm không xác định",
+              type: "Toàn thời gian"
+            };
+          })()}
+          onClose={() => setShowApplyModal(false)}
+          onSubmit={handleApplySubmit}
+        />
+      )}
+    </>
+  );
+
+  if (view === 'success_apply' && currentUser) return (
+    <SuccessApply
+      currentUser={currentUser}
+      onBackToDashboard={() => setView('sv_dashboard')}
+      onViewApplications={() => setView('applications_management')}
+    />
+  );
+
+  if (view === 'business_dashboard' && currentUser) return (
+    <BusinessDashboard 
+      currentUser={currentUser}
+      onLogout={handleLogout}
+      onNavigateToJobManagement={() => setView('business_job_management')}
+      onNavigateToPostJob={() => setView('business_post_job')}
+      onNavigateToCandidateManagement={() => setView('business_candidate_management')}
+    />
+  );
+
+  if (view === 'business_job_management' && currentUser) return (
+    <QuanLyTinTuyenDung
+      currentUser={currentUser}
+      onBack={() => setView('business_dashboard')}
+      onLogout={handleLogout}
+      onNavigateToPostJob={() => setView('business_post_job')}
+      onNavigateToCandidateManagement={() => setView('business_candidate_management')}
+    />
+  );
+
+  if (view === 'business_post_job' && currentUser) return (
+    <DangTinMoi
+      currentUser={currentUser}
+      onBack={() => setView('business_job_management')}
+      onLogout={handleLogout}
+      onNavigateToCandidateManagement={() => setView('business_candidate_management')}
+    />
+  );
+
+  if (view === 'business_candidate_management' && currentUser) return (
+    <QuanLyUngVien
+      currentUser={currentUser}
+      onBack={() => setView('business_dashboard')}
+      onLogout={handleLogout}
+      onNavigateToJobManagement={() => setView('business_job_management')}
+      onNavigateToPostJob={() => setView('business_post_job')}
     />
   );
 

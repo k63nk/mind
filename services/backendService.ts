@@ -21,28 +21,56 @@ class BackendService {
     localStorage.setItem(key, JSON.stringify(value));
   }
 
-  /**
-   * Database Initialization: Gọi AI để tạo dữ liệu nếu database trống
-   */
   async initializeDatabase(): Promise<boolean> {
     const existingJobs = this.getJobs();
     if (existingJobs.length > 0) return false;
 
-    console.log("Seeding database with AI intelligence...");
     const { jobs, exercises } = await generateMarketData();
     
-    if (jobs.length > 0) {
-      this.setStorage(STORAGE_KEYS.JOBS, jobs);
+    // Add hardcoded jobs to ensure they exist in the database
+    const hardcodedJobs: Job[] = [
+      {
+        id: 'job_japanese',
+        companyId: 'c_concentrix',
+        companyName: 'Concentrix Services Vietnam',
+        title: 'Chăm Sóc Khách Hàng Tiếng Nhật (N1/N2)',
+        description: 'Chào đón bạn gia nhập đại gia đình Concentrix! Với vị trí Chăm sóc khách hàng tiếng Nhật, bạn sẽ là gương mặt đại diện kết nối thương hiệu với người dùng tại thị trường Nhật Bản.',
+        requirements: ['N1/N2 Japanese', 'Customer Service skills'],
+        location: 'TP. Hồ Chí Minh',
+        salary: '23.2 Triệu VNĐ',
+        category: 'Business',
+        deadline: '31/12/2026',
+        tag: 'HOT',
+        isHot: true
+      },
+      {
+        id: 'job_music',
+        companyId: 'c_fpt_edu',
+        companyName: 'Hệ thống giáo dục FPT',
+        title: 'Giảng Viên Âm Nhạc - FSC LA',
+        description: 'Chúng tôi đang tìm kiếm Giảng viên Âm nhạc nhiệt huyết để tham gia vào đội ngũ giáo dục tại phân hiệu Tây Ninh (FSC LA).',
+        requirements: ['Đại học chuyên ngành Âm nhạc', 'Kỹ năng sư phạm'],
+        location: 'Tây Ninh',
+        salary: 'Thỏa thuận',
+        category: 'Design',
+        deadline: '2026',
+        tag: 'PRO'
+      }
+    ];
+
+    const allJobs = [...hardcodedJobs, ...jobs];
+
+    if (allJobs.length > 0) {
+      this.setStorage(STORAGE_KEYS.JOBS, allJobs);
       this.setStorage(STORAGE_KEYS.EXERCISES, exercises);
       return true;
     }
     return false;
   }
 
-  // --- User / Auth ---
   login(email: string, role: 'student' | 'business'): User {
     const users = this.getStorage<User[]>(STORAGE_KEYS.USERS, []);
-    let user = users.find(u => u.email === email);
+    let user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
       user = {
@@ -51,7 +79,7 @@ class BackendService {
         name: email.split('@')[0].toUpperCase(),
         role,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        skills: ['Analysis', 'Problem Solving']
+        skills: ['Analysis', 'Strategy']
       };
       users.push(user);
       this.setStorage(STORAGE_KEYS.USERS, users);
@@ -69,53 +97,53 @@ class BackendService {
     return this.getStorage<User | null>(STORAGE_KEYS.CURRENT_USER, null);
   }
 
-  // --- Job Database ---
   getJobs(): Job[] {
-    return this.getStorage<Job[]>(STORAGE_KEYS.JOBS, []);
-  }
-
-  searchJobs(query: string, category?: string): Job[] {
-    let jobs = this.getJobs();
-    if (query) {
-      jobs = jobs.filter(j => 
-        j.title.toLowerCase().includes(query.toLowerCase()) || 
-        j.companyName.toLowerCase().includes(query.toLowerCase())
-      );
+    const jobs = this.getStorage<Job[]>(STORAGE_KEYS.JOBS, []);
+    
+    // Ensure hardcoded jobs exist for the demo
+    const hasJapanese = jobs.some(j => j.id === 'job_japanese');
+    const hasMusic = jobs.some(j => j.id === 'job_music');
+    
+    if (!hasJapanese || !hasMusic) {
+      const hardcodedJobs: Job[] = [
+        {
+          id: 'job_japanese',
+          companyId: 'c_concentrix',
+          companyName: 'Concentrix Services Vietnam',
+          title: 'Chăm Sóc Khách Hàng Tiếng Nhật (N1/N2)',
+          description: 'Chào đón bạn gia nhập đại gia đình Concentrix! Với vị trí Chăm sóc khách hàng tiếng Nhật, bạn sẽ là gương mặt đại diện kết nối thương hiệu với người dùng tại thị trường Nhật Bản.',
+          requirements: ['N1/N2 Japanese', 'Customer Service skills'],
+          location: 'TP. Hồ Chí Minh',
+          salary: '23.2 Triệu VNĐ',
+          category: 'Business',
+          deadline: '31/12/2026',
+          tag: 'HOT',
+          isHot: true
+        },
+        {
+          id: 'job_music',
+          companyId: 'c_fpt_edu',
+          companyName: 'Hệ thống giáo dục FPT',
+          title: 'Giảng Viên Âm Nhạc - FSC LA',
+          description: 'Chúng tôi đang tìm kiếm Giảng viên Âm nhạc nhiệt huyết để tham gia vào đội ngũ giáo dục tại phân hiệu Tây Ninh (FSC LA).',
+          requirements: ['Đại học chuyên ngành Âm nhạc', 'Kỹ năng sư phạm'],
+          location: 'Tây Ninh',
+          salary: 'Thỏa thuận',
+          category: 'Design',
+          deadline: '2026',
+          tag: 'PRO'
+        }
+      ];
+      
+      const updatedJobs = [...jobs];
+      if (!hasJapanese) updatedJobs.push(hardcodedJobs[0]);
+      if (!hasMusic) updatedJobs.push(hardcodedJobs[1]);
+      
+      this.setStorage(STORAGE_KEYS.JOBS, updatedJobs);
+      return updatedJobs;
     }
-    if (category && category !== 'Tất cả') {
-      jobs = jobs.filter(j => j.category === category);
-    }
+    
     return jobs;
-  }
-
-  // --- Applications ---
-  async applyToJob(jobId: string, studentId: string, cvContent: string): Promise<Application> {
-    const job = this.getJobs().find(j => j.id === jobId);
-    if (!job) throw new Error("Job not found");
-
-    const aiResult = await evaluateCVAgainstJob(cvContent, job.title, job.description);
-    const status: ApplicationStatus = aiResult.score >= 75 ? 'CV_PASSED' : 'CV_REJECTED';
-
-    const newApp: Application = {
-      id: `app_${Date.now()}`,
-      jobId,
-      studentId,
-      cvContent,
-      cvScore: aiResult.score,
-      aiFeedback: aiResult.feedback,
-      status,
-      appliedDate: new Date().toLocaleDateString('vi-VN')
-    };
-
-    const apps = this.getStorage<Application[]>(STORAGE_KEYS.APPLICATIONS, []);
-    apps.push(newApp);
-    this.setStorage(STORAGE_KEYS.APPLICATIONS, apps);
-
-    // Create notification
-    this.addNotification(studentId, 'Trạng thái ứng tuyển mới', 
-      `AI đã chấm điểm CV của bạn cho vị trí ${job.title}: ${aiResult.score} điểm.`, status === 'CV_PASSED' ? 'success' : 'warning');
-
-    return newApp;
   }
 
   getApplicationsByStudent(studentId: string): Application[] {
@@ -123,15 +151,55 @@ class BackendService {
     return apps.filter(a => a.studentId === studentId);
   }
 
-  // --- Practice & Exercise ---
+  getStudentStats(studentId: string) {
+    const apps = this.getApplicationsByStudent(studentId);
+    const passedCount = apps.filter(a => a.status === 'CV_PASSED' || a.status === 'INTERVIEW_INVITED').length;
+    const avgScore = apps.length > 0 
+      ? Math.round(apps.reduce((acc, curr) => acc + curr.cvScore, 0) / apps.length) 
+      : 0;
+
+    return {
+      totalApplications: apps.length,
+      passedCount,
+      avgScore,
+      recentApps: apps.slice(-3).reverse()
+    };
+  }
+
   getExercises(): PracticeExercise[] {
     return this.getStorage<PracticeExercise[]>(STORAGE_KEYS.EXERCISES, []);
   }
 
-  // --- Notifications ---
-  getNotifications(userId: string): Notification[] {
-    const all = this.getStorage<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
-    return all.filter(n => n.userId === userId);
+  async createApplication(studentId: string, jobId: string, cvContent: string): Promise<Application> {
+    const apps = this.getStorage<Application[]>(STORAGE_KEYS.APPLICATIONS, []);
+    const jobs = this.getJobs();
+    const job = jobs.find(j => j.id === jobId);
+    
+    // Evaluate CV using AI
+    const evaluation = await evaluateCVAgainstJob(cvContent, job?.title || "Unknown", job?.description || "");
+    
+    const newApp: Application = {
+      id: `app_${Date.now()}`,
+      jobId,
+      studentId,
+      cvContent,
+      cvScore: evaluation.score,
+      aiFeedback: evaluation.feedback,
+      status: evaluation.score >= 70 ? 'CV_PASSED' : 'APPLIED',
+      appliedDate: new Date().toLocaleDateString('vi-VN')
+    };
+
+    apps.push(newApp);
+    this.setStorage(STORAGE_KEYS.APPLICATIONS, apps);
+    
+    this.addNotification(
+      studentId, 
+      'Ứng tuyển thành công', 
+      `Bạn đã nộp hồ sơ cho vị trí ${job?.title || 'việc làm'}. Điểm CV: ${evaluation.score}/100`,
+      evaluation.score >= 70 ? 'success' : 'info'
+    );
+
+    return newApp;
   }
 
   addNotification(userId: string, title: string, message: string, type: 'info' | 'success' | 'warning' = 'info') {

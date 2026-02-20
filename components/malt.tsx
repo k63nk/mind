@@ -12,9 +12,10 @@ interface MaltProps {
   onNavigateToApplications: () => void;
   // Added onNavigateToProfile to fix the error reported in App.tsx
   onNavigateToProfile: () => void;
+  onNavigateToNewJobs: () => void;
 }
 
-const Malt: React.FC<MaltProps> = ({ currentUser, onBack, onLogout, onSelectExercise, onNavigateToApplications, onNavigateToProfile }) => {
+const Malt: React.FC<MaltProps> = ({ currentUser, onBack, onLogout, onSelectExercise, onNavigateToApplications, onNavigateToProfile, onNavigateToNewJobs }) => {
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0f14] text-slate-100 font-display">
       {/* Sidebar */}
@@ -47,7 +48,10 @@ const Malt: React.FC<MaltProps> = ({ currentUser, onBack, onLogout, onSelectExer
             <span className="material-symbols-outlined">science</span>
             <span className="text-sm">Kho luyện tập AI</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors text-left">
+          <button 
+            onClick={onNavigateToNewJobs}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors text-left"
+          >
             <span className="material-symbols-outlined">search</span>
             <span className="text-sm">Việc làm mới</span>
           </button>
