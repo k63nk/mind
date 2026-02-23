@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { User } from '../types';
+import React, { useState, useEffect } from 'react';
+import { User, Application, Job, Notification } from '../types';
+import { backend } from '../services/backendService';
+import NotificationCenter from './NotificationCenter';
 
 interface QuanLyUngVienProps {
   currentUser: User;
@@ -17,6 +19,82 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
   onNavigateToPostJob
 }) => {
   const [activeFilter, setActiveFilter] = useState('all');
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [testScore, setTestScore] = useState<number>(80);
+  const [evaluationStatus, setEvaluationStatus] = useState<'HIRED' | 'FAILED'>('HIRED');
+  const [companyFeedback, setCompanyFeedback] = useState('');
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    const allJobs = backend.getJobs();
+    // Filter jobs for this company (using currentUser.name or a fixed ID for demo)
+    // In a real app, currentUser would have a companyId
+    const companyJobs = allJobs.filter(j => j.companyName === 'TechNova Global' || j.companyId === currentUser.id);
+    setJobs(companyJobs);
+
+    const allApps = backend.getApplications();
+    const companyJobIds = companyJobs.map(j => j.id);
+    const companyApps = allApps.filter(app => companyJobIds.includes(app.jobId));
+    setApplications(companyApps);
+
+    setNotifications(backend.getNotifications(currentUser.id));
+  }, [currentUser]);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleMarkAsRead = (id: string) => {
+    backend.markNotificationAsRead(id);
+    setNotifications(backend.getNotifications(currentUser.id));
+  };
+
+  const getJobTitle = (jobId: string) => {
+    return jobs.find(j => j.id === jobId)?.title || 'Vị trí ẩn';
+  };
+
+  const getStudentInfo = (studentId: string) => {
+    // Mocking student info for demo
+    return {
+      name: studentId === 's_001' ? 'Nguyễn Văn A' : 'Ứng viên MindTrace',
+      email: studentId === 's_001' ? 'vanna@student.edu.vn' : 'candidate@mindtrace.ai',
+      initial: studentId === 's_001' ? 'VA' : 'MT'
+    };
+  };
+
+  const handleSendResult = () => {
+    if (!selectedApp) return;
+
+    const updatedApp = backend.updateApplication(selectedApp.id, {
+      status: evaluationStatus,
+      testScore: testScore,
+      companyFeedback: companyFeedback
+    });
+
+    if (updatedApp) {
+      // Notify student
+      const job = jobs.find(j => j.id === selectedApp.jobId);
+      backend.addNotification(
+        selectedApp.studentId,
+        evaluationStatus === 'HIRED' ? 'Chúc mừng! Bạn đã trúng tuyển' : 'Kết quả ứng tuyển',
+        `Doanh nghiệp ${job?.companyName} đã gửi kết quả cho vị trí ${job?.title}. Trạng thái: ${evaluationStatus === 'HIRED' ? 'TRÚNG TUYỂN' : 'KHÔNG PHÙ HỢP'}.`,
+        evaluationStatus === 'HIRED' ? 'success' : 'info'
+      );
+
+      alert('Đã gửi kết quả thành công!');
+      setSelectedApp(null);
+      // Refresh list
+      const allApps = backend.getApplications();
+      const companyJobIds = jobs.map(j => j.id);
+      setApplications(allApps.filter(app => companyJobIds.includes(app.jobId)));
+    }
+  };
+
+  const filteredApps = applications.filter(app => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'waiting') return app.status === 'TEST_SUBMITTED';
+    return true;
+  });
 
   return (
     <div className="bg-[#0f172a] text-slate-100 antialiased h-screen flex overflow-hidden font-display">
@@ -106,10 +184,10 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 text-slate-400 hover:bg-[#1e293b] rounded-full relative transition-colors">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-[#0f172a]"></span>
-            </button>
+            <NotificationCenter 
+              notifications={notifications} 
+              onMarkAsRead={handleMarkAsRead} 
+            />
             <button className="p-2 text-slate-400 hover:bg-[#1e293b] rounded-full transition-colors">
               <span className="material-symbols-outlined">help_outline</span>
             </button>
@@ -194,16 +272,10 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
                   Tất cả
                 </button>
                 <button 
-                  onClick={() => setActiveFilter('date')}
-                  className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeFilter === 'date' ? 'bg-[#233948] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  onClick={() => setActiveFilter('waiting')}
+                  className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeFilter === 'waiting' ? 'bg-[#233948] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  Theo ngày nộp
-                </button>
-                <button 
-                  onClick={() => setActiveFilter('score')}
-                  className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeFilter === 'score' ? 'bg-[#233948] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  Theo AI Score
+                  Đang chờ chấm test
                 </button>
               </div>
               <div className="h-8 w-px bg-[#334155] hidden md:block"></div>
@@ -236,46 +308,49 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
-                    {[
-                      { name: "Lê Hồng Hạnh", email: "hanh.le@example.com", initial: "LH", job: "Senior UI/UX Designer", score: 92, status: "Đã mời phỏng vấn", statusColor: "emerald" },
-                      { name: "Trần Tuấn Anh", email: "tuananh.t@gmail.com", initial: "TA", job: "Backend Developer", score: 85, status: "Đã nộp bài test", statusColor: "blue" },
-                      { name: "Phạm Thu Trang", email: "trang.thu@outlook.com", initial: "PT", job: "Marketing Manager", score: 64, status: "Đang chờ chấm bài", statusColor: "amber" },
-                      { name: "Vũ Minh Đức", email: "duc.vu@fpt.com.vn", initial: "VD", job: "Junior Frontend Dev", score: 79, status: "Đã pass CV", statusColor: "emerald" },
-                      { name: "Nguyễn Kim Ngân", email: "ngankim.hr@gmail.com", initial: "NK", job: "Content Specialist", score: 88, status: "Đang chờ chấm bài", statusColor: "amber" }
-                    ].map((candidate, i) => (
-                      <tr key={i} className="hover:bg-slate-800/20 transition-colors group">
-                        <td className="px-8 py-6">
-                          <div className="flex items-center gap-4">
-                            <div className="size-10 rounded-xl bg-[#1392ec]/10 flex items-center justify-center text-[#1392ec] font-black text-xs shadow-lg border border-[#1392ec]/20">{candidate.initial}</div>
-                            <div>
-                              <p className="text-sm font-bold text-white group-hover:text-[#1392ec] transition-colors">{candidate.name}</p>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{candidate.email}</p>
+                    {filteredApps.map((app, i) => {
+                      const student = getStudentInfo(app.studentId);
+                      return (
+                        <tr key={app.id} className="hover:bg-slate-800/20 transition-colors group">
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-4">
+                              <div className="size-10 rounded-xl bg-[#1392ec]/10 flex items-center justify-center text-[#1392ec] font-black text-xs shadow-lg border border-[#1392ec]/20">{student.initial}</div>
+                              <div>
+                                <p className="text-sm font-bold text-white group-hover:text-[#1392ec] transition-colors">{student.name}</p>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{student.email}</p>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-wider">{candidate.job}</td>
-                        <td className="px-8 py-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-32 h-1.5 bg-[#0f172a] rounded-full overflow-hidden border border-slate-800">
-                              <div className={`h-full rounded-full transition-all duration-1000 ${candidate.score > 80 ? 'bg-emerald-500' : 'bg-[#1392ec]'}`} style={{ width: `${candidate.score}%` }}></div>
+                          </td>
+                          <td className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-wider">{getJobTitle(app.jobId)}</td>
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-3">
+                              <div className="w-32 h-1.5 bg-[#0f172a] rounded-full overflow-hidden border border-slate-800">
+                                <div className={`h-full rounded-full transition-all duration-1000 ${app.cvScore > 80 ? 'bg-emerald-500' : 'bg-[#1392ec]'}`} style={{ width: `${app.cvScore}%` }}></div>
+                              </div>
+                              <span className="text-[10px] font-black text-white">{app.cvScore}/100</span>
                             </div>
-                            <span className="text-[10px] font-black text-white">{candidate.score}/100</span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-6">
-                          <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
-                            candidate.statusColor === 'emerald' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                            candidate.statusColor === 'blue' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                          }`}>
-                            {candidate.status}
-                          </span>
-                        </td>
-                        <td className="px-8 py-6 text-right">
-                          <button className="text-[10px] font-black text-[#1392ec] uppercase tracking-widest hover:underline">Xem chi tiết</button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                              app.status === 'HIRED' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                              app.status === 'TEST_SUBMITTED' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                              app.status === 'FAILED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                              'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                            }`}>
+                              {app.status === 'TEST_SUBMITTED' ? 'Đang chờ chấm test' : app.status}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6 text-right">
+                            <button 
+                              onClick={() => setSelectedApp(app)}
+                              className="text-[10px] font-black text-[#1392ec] uppercase tracking-widest hover:underline"
+                            >
+                              Xem chi tiết
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -311,6 +386,165 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Evaluation Detail Modal */}
+        {selectedApp && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-[#1e293b] border border-[#334155] rounded-[2.5rem] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+              <header className="p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <div className="flex items-center gap-4">
+                  <div className="size-12 rounded-xl bg-[#1392ec]/10 flex items-center justify-center text-[#1392ec]">
+                    <span className="material-symbols-outlined">person_search</span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-white uppercase italic tracking-tight">Đánh giá ứng viên</h3>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Ứng tuyển vị trí: {getJobTitle(selectedApp.jobId)}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedApp(null)} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 transition-colors">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </header>
+
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left Side: Info & Files */}
+                <div className="space-y-8">
+                  <section>
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Thông tin ứng viên</h4>
+                    <div className="p-6 bg-slate-900/50 border border-slate-800 rounded-2xl">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="size-14 rounded-2xl bg-[#1392ec]/10 flex items-center justify-center text-[#1392ec] font-black text-xl border border-[#1392ec]/20">
+                          {getStudentInfo(selectedApp.studentId).initial}
+                        </div>
+                        <div>
+                          <h5 className="text-lg font-bold text-white">{getStudentInfo(selectedApp.studentId).name}</h5>
+                          <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{getStudentInfo(selectedApp.studentId).email}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 bg-[#0f172a] rounded-xl border border-slate-800">
+                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Điểm CV AI</p>
+                          <p className="text-xl font-black text-[#1392ec] italic">{selectedApp.cvScore}/100</p>
+                        </div>
+                        <div className="p-3 bg-[#0f172a] rounded-xl border border-slate-800">
+                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Ngày nộp</p>
+                          <p className="text-sm font-bold text-white">{selectedApp.appliedDate}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Tài liệu đính kèm</h4>
+                    <div className="space-y-3">
+                      <div className="p-4 bg-[#0f172a] border border-slate-800 rounded-xl flex items-center justify-between group hover:border-[#1392ec]/30 transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className="size-10 bg-red-500/10 rounded-lg flex items-center justify-center text-red-500">
+                            <span className="material-symbols-outlined">picture_as_pdf</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-white">{selectedApp.cvFileName}</p>
+                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Hồ sơ CV</p>
+                          </div>
+                        </div>
+                        <button className="p-2 text-slate-500 hover:text-white transition-colors">
+                          <span className="material-symbols-outlined">download</span>
+                        </button>
+                      </div>
+
+                      {selectedApp.testSubmission && (
+                        <div className="p-4 bg-[#0f172a] border border-slate-800 rounded-xl flex items-center justify-between group hover:border-orange-500/30 transition-all">
+                          <div className="flex items-center gap-4">
+                            <div className="size-10 bg-orange-500/10 rounded-lg flex items-center justify-center text-orange-500">
+                              <span className="material-symbols-outlined">assignment</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-white">{selectedApp.testSubmission}</p>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Bài làm Test</p>
+                            </div>
+                          </div>
+                          <button className="p-2 text-slate-500 hover:text-white transition-colors">
+                            <span className="material-symbols-outlined">download</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </div>
+
+                {/* Right Side: Evaluation Form */}
+                <div className="space-y-8">
+                  <section>
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Chấm điểm & Đánh giá</h4>
+                    <div className="p-8 bg-slate-900/50 border border-slate-800 rounded-2xl space-y-8">
+                      <div>
+                        <div className="flex justify-between items-center mb-4">
+                          <label className="text-xs font-black text-white uppercase tracking-widest">Điểm bài test (0 - 100)</label>
+                          <span className="text-2xl font-black text-[#1392ec] italic">{testScore}</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="100" 
+                          value={testScore} 
+                          onChange={(e) => setTestScore(parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#1392ec]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-black text-white uppercase tracking-widest block mb-4">Quyết định tuyển dụng</label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <button 
+                            onClick={() => setEvaluationStatus('HIRED')}
+                            className={`py-4 rounded-xl font-black uppercase text-[10px] tracking-widest border transition-all flex items-center justify-center gap-2 ${
+                              evaluationStatus === 'HIRED' 
+                              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-500 shadow-lg shadow-emerald-500/10' 
+                              : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-sm">check_circle</span>
+                            Trúng tuyển
+                          </button>
+                          <button 
+                            onClick={() => setEvaluationStatus('FAILED')}
+                            className={`py-4 rounded-xl font-black uppercase text-[10px] tracking-widest border transition-all flex items-center justify-center gap-2 ${
+                              evaluationStatus === 'FAILED' 
+                              ? 'bg-red-500/20 border-red-500 text-red-500 shadow-lg shadow-red-500/10' 
+                              : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-sm">cancel</span>
+                            Trượt
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-white uppercase tracking-widest block">Nhận xét từ doanh nghiệp</label>
+                        <textarea 
+                          className="w-full bg-[#0f172a] border border-slate-800 rounded-xl p-4 focus:border-[#1392ec] outline-none transition-all text-sm font-medium text-slate-200" 
+                          rows={4}
+                          placeholder="Nhập nhận xét chi tiết cho ứng viên..."
+                          value={companyFeedback}
+                          onChange={(e) => setCompanyFeedback(e.target.value)}
+                        ></textarea>
+                      </div>
+
+                      <button 
+                        onClick={handleSendResult}
+                        className="w-full py-4 bg-[#1392ec] text-white rounded-xl font-black uppercase text-xs tracking-[0.2em] hover:brightness-110 transition-all shadow-xl shadow-[#1392ec]/20 flex items-center justify-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-lg">send</span>
+                        Gửi kết quả đánh giá
+                      </button>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 
-import { User, Job, Application, ApplicationStatus, PracticeExercise, Notification } from '../types';
+import { User, Job, Application, ApplicationStatus, PracticeExercise, Notification, ExerciseResult } from '../types';
 import { evaluateCVAgainstJob, generateMarketData } from './geminiService';
 
 const STORAGE_KEYS = {
@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   JOBS: 'mt_db_jobs',
   APPLICATIONS: 'mt_db_applications',
   EXERCISES: 'mt_db_exercises',
+  EXERCISE_RESULTS: 'mt_db_exercise_results',
   NOTIFICATIONS: 'mt_db_notifications',
   CURRENT_USER: 'mt_db_current_session'
 };
@@ -40,6 +41,7 @@ class BackendService {
         salary: '23.2 Triệu VNĐ',
         category: 'Business',
         deadline: '31/12/2026',
+        postedDate: '10/02/2026',
         tag: 'HOT',
         isHot: true
       },
@@ -54,15 +56,45 @@ class BackendService {
         salary: 'Thỏa thuận',
         category: 'Design',
         deadline: '2026',
+        postedDate: '15/02/2026',
         tag: 'PRO'
       }
     ];
 
+    const momoExercise: PracticeExercise = {
+      id: 'momo-1',
+      company: 'Momo E-Wallet',
+      title: 'Tăng tỷ lệ chuyển đổi nạp tiền điện thoại',
+      description: 'Cải thiện UI/UX của tính năng top-up để giảm thiểu số bước thao tác và tăng trải nghiệm người dùng.',
+      tag: 'Product Design',
+      time: '30 phút',
+      difficulty: 'TRUNG BÌNH',
+      diffColor: 'orange',
+      category: 'Design'
+    };
+
     const allJobs = [...hardcodedJobs, ...jobs];
+    const allExercises = [momoExercise, ...exercises];
 
     if (allJobs.length > 0) {
       this.setStorage(STORAGE_KEYS.JOBS, allJobs);
-      this.setStorage(STORAGE_KEYS.EXERCISES, exercises);
+      this.setStorage(STORAGE_KEYS.EXERCISES, allExercises);
+      
+      // Seed a mock result for the Momo exercise if a user exists
+      const currentUser = this.getCurrentUser();
+      if (currentUser) {
+        this.saveExerciseResult({
+          exerciseId: 'momo-1',
+          studentId: currentUser.id,
+          score: 88,
+          feedback: "Giải pháp thiết kế rất tốt, tập trung vào trải nghiệm người dùng thực tế.",
+          strengths: ["Giao diện trực quan", "Giảm thiểu bước thao tác", "Sử dụng màu sắc hợp lý"],
+          weaknesses: ["Cần thêm các micro-interactions"],
+          recommendations: ["Nghiên cứu thêm về hành vi người dùng Gen Z"],
+          completedDate: new Date().toLocaleDateString('vi-VN')
+        });
+      }
+      
       return true;
     }
     return false;
@@ -98,7 +130,37 @@ class BackendService {
   }
 
   getJobs(): Job[] {
-    const jobs = this.getStorage<Job[]>(STORAGE_KEYS.JOBS, []);
+    let jobs = this.getStorage<Job[]>(STORAGE_KEYS.JOBS, []);
+    const now = new Date();
+    let needsUpdate = false;
+
+    // Auto-expire jobs
+    jobs = jobs.map(job => {
+      if (job.tag !== 'CLOSED' && job.deadline) {
+        let deadlineDate: Date | null = null;
+        if (job.deadline.includes('-')) {
+          deadlineDate = new Date(job.deadline);
+        } else if (job.deadline.includes('/')) {
+          const parts = job.deadline.split('/');
+          if (parts.length === 3) {
+            const [d, m, y] = parts.map(Number);
+            deadlineDate = new Date(y, m - 1, d, 23, 59, 59);
+          }
+        } else if (/^\d{4}$/.test(job.deadline)) {
+          deadlineDate = new Date(Number(job.deadline), 11, 31, 23, 59, 59);
+        }
+
+        if (deadlineDate && !isNaN(deadlineDate.getTime()) && deadlineDate < now) {
+          needsUpdate = true;
+          return { ...job, tag: 'CLOSED' };
+        }
+      }
+      return job;
+    });
+
+    if (needsUpdate) {
+      this.setStorage(STORAGE_KEYS.JOBS, jobs);
+    }
     
     // Ensure hardcoded jobs exist for the demo
     const hasJapanese = jobs.some(j => j.id === 'job_japanese');
@@ -117,6 +179,7 @@ class BackendService {
           salary: '23.2 Triệu VNĐ',
           category: 'Business',
           deadline: '31/12/2026',
+          postedDate: '10/02/2026',
           tag: 'HOT',
           isHot: true
         },
@@ -131,6 +194,7 @@ class BackendService {
           salary: 'Thỏa thuận',
           category: 'Design',
           deadline: '2026',
+          postedDate: '15/02/2026',
           tag: 'PRO'
         }
       ];
@@ -153,7 +217,7 @@ class BackendService {
 
   getStudentStats(studentId: string) {
     const apps = this.getApplicationsByStudent(studentId);
-    const passedCount = apps.filter(a => a.status === 'CV_PASSED' || a.status === 'INTERVIEW_INVITED').length;
+    const passedCount = apps.filter(a => a.status === 'CV_PASSED' || a.status === 'HIRED').length;
     const avgScore = apps.length > 0 
       ? Math.round(apps.reduce((acc, curr) => acc + curr.cvScore, 0) / apps.length) 
       : 0;
@@ -167,26 +231,124 @@ class BackendService {
   }
 
   getExercises(): PracticeExercise[] {
-    return this.getStorage<PracticeExercise[]>(STORAGE_KEYS.EXERCISES, []);
+    const exercises = this.getStorage<PracticeExercise[]>(STORAGE_KEYS.EXERCISES, []);
+    const hasMomo = exercises.some(ex => ex.id === 'momo-1');
+    
+    if (!hasMomo) {
+      const momoExercise: PracticeExercise = {
+        id: 'momo-1',
+        company: 'Momo E-Wallet',
+        title: 'Tăng tỷ lệ chuyển đổi nạp tiền điện thoại',
+        description: 'Cải thiện UI/UX của tính năng top-up để giảm thiểu số bước thao tác và tăng trải nghiệm người dùng.',
+        tag: 'Product Design',
+        time: '30 phút',
+        difficulty: 'TRUNG BÌNH',
+        diffColor: 'orange',
+        category: 'Design'
+      };
+      exercises.unshift(momoExercise);
+      this.setStorage(STORAGE_KEYS.EXERCISES, exercises);
+    }
+    
+    return exercises;
   }
 
-  async createApplication(studentId: string, jobId: string, cvContent: string): Promise<Application> {
+  saveExerciseResult(result: ExerciseResult) {
+    const results = this.getStorage<ExerciseResult[]>(STORAGE_KEYS.EXERCISE_RESULTS, []);
+    // Update existing result or add new one
+    const index = results.findIndex(r => r.exerciseId === result.exerciseId && r.studentId === result.studentId);
+    if (index !== -1) {
+      results[index] = result;
+    } else {
+      results.push(result);
+    }
+    this.setStorage(STORAGE_KEYS.EXERCISE_RESULTS, results);
+  }
+
+  getExerciseResults(studentId: string): ExerciseResult[] {
+    const results = this.getStorage<ExerciseResult[]>(STORAGE_KEYS.EXERCISE_RESULTS, []);
+    
+    // For demo purposes, if Momo result is missing, add it
+    const hasMomoResult = results.some(r => r.exerciseId === 'momo-1' && r.studentId === studentId);
+    if (!hasMomoResult) {
+      const mockResult: ExerciseResult = {
+        exerciseId: 'momo-1',
+        studentId: studentId,
+        score: 88,
+        feedback: "Giải pháp thiết kế rất tốt, tập trung vào trải nghiệm người dùng thực tế.",
+        strengths: ["Giao diện trực quan", "Giảm thiểu bước thao tác", "Sử dụng màu sắc hợp lý"],
+        weaknesses: ["Cần thêm các micro-interactions"],
+        recommendations: ["Nghiên cứu thêm về hành vi người dùng Gen Z"],
+        completedDate: new Date().toLocaleDateString('vi-VN')
+      };
+      results.push(mockResult);
+      this.setStorage(STORAGE_KEYS.EXERCISE_RESULTS, results);
+    }
+    
+    return results.filter(r => r.studentId === studentId);
+  }
+
+  createJob(jobData: Partial<Job>): Job {
+    const jobs = this.getStorage<Job[]>(STORAGE_KEYS.JOBS, []);
+    const newJob: Job = {
+      id: `job_${Date.now()}`,
+      companyId: jobData.companyId || 'c_default',
+      companyName: jobData.companyName || 'Unknown Company',
+      title: jobData.title || 'Untitled Position',
+      description: jobData.description || '',
+      requirements: jobData.requirements || [],
+      location: jobData.location || 'Remote',
+      salary: jobData.salary || 'Thỏa thuận',
+      category: jobData.category || 'Business',
+      deadline: jobData.deadline || '',
+      tag: jobData.tag || 'PRO',
+      benefits: jobData.benefits || '',
+      testAssignment: jobData.testAssignment || '',
+      minScore: jobData.minScore || 75,
+      isHot: jobData.isHot || false,
+      postedDate: new Date().toLocaleDateString('vi-VN')
+    };
+    jobs.unshift(newJob);
+    this.setStorage(STORAGE_KEYS.JOBS, jobs);
+    return newJob;
+  }
+
+  updateJob(jobId: string, jobData: Partial<Job>): Job | null {
+    const jobs = this.getStorage<Job[]>(STORAGE_KEYS.JOBS, []);
+    const index = jobs.findIndex(j => j.id === jobId);
+    if (index === -1) return null;
+
+    const updatedJob = { ...jobs[index], ...jobData };
+    jobs[index] = updatedJob;
+    this.setStorage(STORAGE_KEYS.JOBS, jobs);
+    return updatedJob;
+  }
+
+  async createApplication(studentId: string, jobId: string, cvContent: string, cvFileName: string): Promise<Application> {
     const apps = this.getStorage<Application[]>(STORAGE_KEYS.APPLICATIONS, []);
     const jobs = this.getJobs();
     const job = jobs.find(j => j.id === jobId);
     
     // Evaluate CV using AI
-    const evaluation = await evaluateCVAgainstJob(cvContent, job?.title || "Unknown", job?.description || "");
+    const evaluation = await evaluateCVAgainstJob(
+      cvContent, 
+      job?.title || "Unknown", 
+      job?.description || "",
+      job?.requirements || []
+    );
+    const minScore = job?.minScore || 70;
     
     const newApp: Application = {
       id: `app_${Date.now()}`,
       jobId,
       studentId,
+      cvFileName,
       cvContent,
       cvScore: evaluation.score,
       aiFeedback: evaluation.feedback,
-      status: evaluation.score >= 70 ? 'CV_PASSED' : 'APPLIED',
-      appliedDate: new Date().toLocaleDateString('vi-VN')
+      status: evaluation.score >= minScore ? 'CV_PASSED' : 'CV_REJECTED',
+      appliedDate: new Date().toLocaleDateString('vi-VN'),
+      testStartTime: evaluation.score >= minScore ? new Date().toISOString() : undefined
     };
 
     apps.push(newApp);
@@ -202,6 +364,17 @@ class BackendService {
     return newApp;
   }
 
+  updateApplication(appId: string, appData: Partial<Application>): Application | null {
+    const apps = this.getStorage<Application[]>(STORAGE_KEYS.APPLICATIONS, []);
+    const index = apps.findIndex(a => a.id === appId);
+    if (index === -1) return null;
+
+    const updatedApp = { ...apps[index], ...appData };
+    apps[index] = updatedApp;
+    this.setStorage(STORAGE_KEYS.APPLICATIONS, apps);
+    return updatedApp;
+  }
+
   addNotification(userId: string, title: string, message: string, type: 'info' | 'success' | 'warning' = 'info') {
     const all = this.getStorage<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
     const newNotif: Notification = {
@@ -215,6 +388,24 @@ class BackendService {
     };
     all.unshift(newNotif);
     this.setStorage(STORAGE_KEYS.NOTIFICATIONS, all);
+  }
+
+  getNotifications(userId: string): Notification[] {
+    const all = this.getStorage<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+    return all.filter(n => n.userId === userId);
+  }
+
+  getApplications(): Application[] {
+    return this.getStorage<Application[]>(STORAGE_KEYS.APPLICATIONS, []);
+  }
+
+  markNotificationAsRead(notifId: string) {
+    const all = this.getStorage<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+    const index = all.findIndex(n => n.id === notifId);
+    if (index !== -1) {
+      all[index].isRead = true;
+      this.setStorage(STORAGE_KEYS.NOTIFICATIONS, all);
+    }
   }
 }
 

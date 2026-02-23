@@ -1,6 +1,6 @@
 
 export type Role = 'student' | 'business';
-export type ApplicationStatus = 'APPLIED' | 'CV_PASSED' | 'CV_REJECTED' | 'TEST_SUBMITTED' | 'INTERVIEW_INVITED' | 'REJECTED';
+export type ApplicationStatus = 'APPLIED' | 'CV_PASSED' | 'CV_REJECTED' | 'TEST_SUBMITTED' | 'HIRED' | 'FAILED';
 export type JobCategory = 'IT' | 'Marketing' | 'Finance' | 'Design' | 'Business';
 
 export interface User {
@@ -33,19 +33,27 @@ export interface Job {
   category: JobCategory;
   deadline: string;
   tag: string;
+  postedDate?: string;
   isHot?: boolean;
+  benefits?: string;
+  testAssignment?: string;
+  minScore?: number;
 }
 
 export interface Application {
   id: string;
   jobId: string;
   studentId: string;
+  cvFileName: string;
   cvContent: string;
   cvScore: number;
   aiFeedback: string;
   status: ApplicationStatus;
   appliedDate: string;
+  testStartTime?: string;
+  draftSolution?: string;
   testSubmission?: string;
+  testScore?: number;
   companyScore?: number;
   companyFeedback?: string;
 }
@@ -76,4 +84,15 @@ export interface AIScoreResult {
   score: number;
   feedback: string;
   recommendations: string[];
+}
+
+export interface ExerciseResult {
+  exerciseId: string;
+  studentId: string;
+  score: number;
+  feedback: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+  completedDate: string;
 }

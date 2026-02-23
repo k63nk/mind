@@ -17,14 +17,17 @@ import QuanLyTinTuyenDung from './components/QuanLyTinTuyenDung';
 import DangTinMoi from './components/DangTinMoi';
 import QuanLyUngVien from './components/QuanLyUngVien';
 import { backend } from './services/backendService';
-import { User } from './types';
+import { User, Job } from './types';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'home' | 'login' | 'sv_dashboard' | 'exercise_library' | 'exercise_workspace' | 'applications_management' | 'personal_profile' | 'new_jobs' | 'job_detail' | 'success_apply' | 'business_dashboard' | 'business_job_management' | 'business_post_job' | 'business_candidate_management'>('home');
   const [currentUser, setCurrentUser] = useState<User | null>(backend.getCurrentUser());
   const [isInitializing, setIsInitializing] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [currentApplication, setCurrentApplication] = useState<any>(null);
 
   useEffect(() => {
     const initDb = async () => {
@@ -60,12 +63,13 @@ const App: React.FC = () => {
     setView('home');
   };
 
-  const handleApplySubmit = async (cvContent: string, message: string) => {
+  const handleApplySubmit = async (cvContent: string, message: string, cvFileName: string) => {
     if (!currentUser || !selectedJobId) return;
     
     try {
-      await backend.createApplication(currentUser.id, selectedJobId, cvContent);
+      const application = await backend.createApplication(currentUser.id, selectedJobId, cvContent, cvFileName);
       setShowApplyModal(false);
+      setCurrentApplication(application);
       setView('success_apply');
     } catch (error) {
       console.error("Application error:", error);
@@ -120,14 +124,24 @@ const App: React.FC = () => {
       currentUser={currentUser}
       onBack={() => setView('sv_dashboard')} 
       onLogout={handleLogout} 
-      onSelectExercise={(id) => setView('exercise_workspace')}
+      onSelectExercise={(id) => {
+        setSelectedExerciseId(id);
+        setView('exercise_workspace');
+      }}
       onNavigateToApplications={() => setView('applications_management')}
       onNavigateToProfile={() => setView('personal_profile')}
       onNavigateToNewJobs={() => setView('new_jobs')}
     />
   );
 
-  if (view === 'exercise_workspace') return <MA1_LT onBack={() => setView('exercise_library')} />;
+  if (view === 'exercise_workspace' && currentUser) return (
+    <MA1_LT 
+      exerciseId={selectedExerciseId || ''}
+      jobId={!selectedExerciseId ? selectedJobId : undefined}
+      currentUser={currentUser}
+      onBack={() => selectedExerciseId ? setView('exercise_library') : setView('sv_dashboard')} 
+    />
+  );
 
   if (view === 'personal_profile' && currentUser) return (
     <HoSoCaNhan 
@@ -190,8 +204,13 @@ const App: React.FC = () => {
   if (view === 'success_apply' && currentUser) return (
     <SuccessApply
       currentUser={currentUser}
+      application={currentApplication}
       onBackToDashboard={() => setView('sv_dashboard')}
       onViewApplications={() => setView('applications_management')}
+      onStartTest={() => {
+        setSelectedExerciseId(null);
+        setView('exercise_workspace');
+      }}
     />
   );
 
@@ -210,7 +229,14 @@ const App: React.FC = () => {
       currentUser={currentUser}
       onBack={() => setView('business_dashboard')}
       onLogout={handleLogout}
-      onNavigateToPostJob={() => setView('business_post_job')}
+      onNavigateToPostJob={() => {
+        setEditingJob(null);
+        setView('business_post_job');
+      }}
+      onEditJob={(job) => {
+        setEditingJob(job);
+        setView('business_post_job');
+      }}
       onNavigateToCandidateManagement={() => setView('business_candidate_management')}
     />
   );
@@ -218,7 +244,11 @@ const App: React.FC = () => {
   if (view === 'business_post_job' && currentUser) return (
     <DangTinMoi
       currentUser={currentUser}
-      onBack={() => setView('business_job_management')}
+      initialJob={editingJob}
+      onBack={() => {
+        setEditingJob(null);
+        setView('business_job_management');
+      }}
       onLogout={handleLogout}
       onNavigateToCandidateManagement={() => setView('business_candidate_management')}
     />

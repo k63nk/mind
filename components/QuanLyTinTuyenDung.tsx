@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { User } from '../types';
+import React, { useState, useEffect } from 'react';
+import { User, Job } from '../types';
+import { backend } from '../services/backendService';
 
 interface QuanLyTinTuyenDungProps {
   currentUser: User;
   onBack: () => void;
   onLogout: () => void;
   onNavigateToPostJob: () => void;
+  onEditJob: (job: Job) => void;
   onNavigateToCandidateManagement: () => void;
 }
 
@@ -14,9 +16,24 @@ const QuanLyTinTuyenDung: React.FC<QuanLyTinTuyenDungProps> = ({
   onBack, 
   onLogout, 
   onNavigateToPostJob,
+  onEditJob,
   onNavigateToCandidateManagement
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'closed' | 'draft'>('all');
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+
+  useEffect(() => {
+    setJobs(backend.getJobs());
+  }, []);
+
+  const filteredJobs = jobs.filter(job => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'active') return job.tag !== 'CLOSED'; // Simplified logic
+    if (activeTab === 'closed') return job.tag === 'CLOSED';
+    if (activeTab === 'draft') return job.tag === 'DRAFT';
+    return true;
+  });
 
   return (
     <div className="bg-[#0f172a] text-slate-100 antialiased h-screen flex overflow-hidden font-display">
@@ -186,58 +203,52 @@ const QuanLyTinTuyenDung: React.FC<QuanLyTinTuyenDungProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
-                    {[
-                      { title: "Senior Frontend Developer", date: "12/02/2026", deadline: "12/03/2026", count: 45, today: "+5", pass: 18, fail: 27, status: "Đang tuyển", statusColor: "emerald" },
-                      { title: "UI/UX Product Designer", date: "15/02/2026", deadline: "05/03/2026", count: 28, today: "", pass: 10, fail: 18, status: "Đang tuyển", statusColor: "emerald" },
-                      { title: "Backend Engineer (NodeJS)", date: "01/09/2025", deadline: "01/10/2025", count: 62, today: "", pass: 20, fail: 42, status: "Đã đóng", statusColor: "slate" },
-                      { title: "Digital Marketing Lead", date: "Chưa đăng", deadline: "-", count: 0, today: "", pass: 0, fail: 0, status: "Bản nháp", statusColor: "orange" }
-                    ].map((job, i) => (
-                      <tr key={i} className="hover:bg-slate-800/20 transition-colors group">
+                    {filteredJobs.map((job, i) => (
+                      <tr key={job.id} className="hover:bg-slate-800/20 transition-colors group">
                         <td className="px-8 py-6">
                           <div className="flex flex-col">
                             <span className="text-sm font-bold text-white group-hover:text-[#1392ec] transition-colors">{job.title}</span>
                             <div className="flex items-center gap-2 mt-1.5">
-                              <span className={`size-2 rounded-full ${job.statusColor === 'emerald' ? 'bg-emerald-500' : job.statusColor === 'orange' ? 'bg-orange-400 animate-pulse' : 'bg-slate-500'}`}></span>
-                              <span className={`text-[9px] font-black uppercase tracking-widest ${job.statusColor === 'emerald' ? 'text-emerald-500' : job.statusColor === 'orange' ? 'text-orange-400' : 'text-slate-500'}`}>{job.status}</span>
+                              <span className={`size-2 rounded-full ${job.tag === 'HOT' ? 'bg-emerald-500' : job.tag === 'CLOSED' ? 'bg-red-500' : 'bg-slate-500'}`}></span>
+                              <span className={`text-[9px] font-black uppercase tracking-widest ${job.tag === 'HOT' ? 'text-emerald-500' : job.tag === 'CLOSED' ? 'text-red-400' : 'text-slate-500'}`}>
+                                {job.tag === 'HOT' ? 'Đang tuyển' : job.tag === 'CLOSED' ? 'Hết hạn' : 'Công khai'}
+                              </span>
                             </div>
                           </div>
                         </td>
-                        <td className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-wider">{job.date}</td>
-                        <td className={`px-8 py-6 text-xs font-bold uppercase tracking-wider ${job.status === 'Đã đóng' ? 'text-red-400' : 'text-slate-400'}`}>{job.deadline}</td>
+                        <td className="px-8 py-6 text-xs font-bold text-slate-400 uppercase tracking-wider">{job.postedDate || '12/02/2026'}</td>
+                        <td className={`px-8 py-6 text-xs font-bold uppercase tracking-wider text-slate-400`}>{job.deadline}</td>
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-black text-white">{job.count}</span>
-                            {job.today && <span className="text-[9px] text-[#1392ec] bg-[#1392ec]/10 px-2 py-0.5 rounded-full font-black uppercase tracking-widest">{job.today} hôm nay</span>}
+                            <span className="text-sm font-black text-white">{Math.floor(Math.random() * 50)}</span>
                           </div>
                         </td>
                         <td className="px-8 py-6">
-                          {job.status !== 'Bản nháp' ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="w-36 h-2 bg-[#0f172a] rounded-full flex overflow-hidden border border-slate-800">
-                                <div className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" style={{ width: `${(job.pass / (job.pass + job.fail)) * 100}%` }}></div>
-                                <div className="h-full bg-red-400" style={{ width: `${(job.fail / (job.pass + job.fail)) * 100}%` }}></div>
-                              </div>
-                              <div className="flex justify-between w-36 text-[9px] font-black uppercase tracking-widest">
-                                <span className="text-emerald-500">{job.pass} Pass</span>
-                                <span className="text-red-400">{job.fail} Fail</span>
-                              </div>
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-36 h-2 bg-[#0f172a] rounded-full flex overflow-hidden border border-slate-800">
+                              <div className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" style={{ width: '40%' }}></div>
+                              <div className="h-full bg-red-400" style={{ width: '60%' }}></div>
                             </div>
-                          ) : (
-                            <div className="text-center">
-                              <span className="text-xs text-slate-700 font-bold">-</span>
+                            <div className="flex justify-between w-36 text-[9px] font-black uppercase tracking-widest">
+                              <span className="text-emerald-500">18 Pass</span>
+                              <span className="text-red-400">27 Fail</span>
                             </div>
-                          )}
+                          </div>
                         </td>
                         <td className="px-8 py-6 text-right">
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                            <button className="p-2 text-slate-500 hover:text-[#1392ec] hover:bg-[#1392ec]/10 rounded-lg transition-all" title="Sửa tin">
+                            <button 
+                              onClick={() => onEditJob(job)}
+                              className="p-2 text-slate-500 hover:text-[#1392ec] hover:bg-[#1392ec]/10 rounded-lg transition-all" 
+                              title="Sửa tin"
+                            >
                               <span className="material-symbols-outlined text-xl">edit</span>
                             </button>
-                            <button className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-900/10 rounded-lg transition-all" title={job.status === 'Đã đóng' ? 'Mở lại' : 'Dừng tuyển'}>
-                              <span className="material-symbols-outlined text-xl">{job.status === 'Đã đóng' ? 'play_circle' : 'pause_circle'}</span>
-                            </button>
-                            <button className={`ml-2 px-4 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all ${job.status === 'Bản nháp' ? 'bg-[#1392ec] text-white hover:bg-[#1181d1]' : 'bg-[#0f172a] text-slate-300 hover:bg-slate-800 border border-[#334155]'}`}>
-                              {job.status === 'Bản nháp' ? 'Đăng ngay' : 'Chi tiết'}
+                            <button 
+                              onClick={() => setSelectedJob(job)}
+                              className={`ml-2 px-4 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all bg-[#0f172a] text-slate-300 hover:bg-slate-800 border border-[#334155]`}
+                            >
+                              Chi tiết
                             </button>
                           </div>
                         </td>
@@ -295,6 +306,131 @@ const QuanLyTinTuyenDung: React.FC<QuanLyTinTuyenDungProps> = ({
           </div>
         </div>
       </main>
+
+      {/* Job Detail Modal */}
+      {selectedJob && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#1e293b] w-full max-w-4xl max-h-[90vh] rounded-3xl border border-[#334155] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+            {/* Modal Header */}
+            <div className="p-8 border-b border-[#334155] flex items-start justify-between bg-[#0f172a]/50">
+              <div className="flex gap-6">
+                <div className="size-16 rounded-2xl bg-white flex items-center justify-center shadow-xl shrink-0">
+                  <img src="https://api.dicebear.com/7.x/initials/svg?seed=TN" alt="logo" className="size-10" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white uppercase italic tracking-tight leading-none">{selectedJob.title}</h3>
+                  <p className="text-sm font-bold text-[#1392ec] uppercase tracking-widest mt-2">{selectedJob.companyName}</p>
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-800 rounded-full border border-slate-700">
+                      <span className="material-symbols-outlined text-xs text-slate-400">location_on</span>
+                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{selectedJob.location}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-800 rounded-full border border-slate-700">
+                      <span className="material-symbols-outlined text-xs text-slate-400">payments</span>
+                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{selectedJob.salary}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 rounded-full border border-red-500/20">
+                      <span className="material-symbols-outlined text-xs text-red-500">event</span>
+                      <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Hạn: {selectedJob.deadline}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedJob(null)}
+                className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-500"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="md:col-span-2 space-y-10">
+                  <section>
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm">description</span> Mô tả công việc
+                    </h4>
+                    <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+                      {selectedJob.description}
+                    </div>
+                  </section>
+
+                  {selectedJob.benefits && (
+                    <section>
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm">redeem</span> Quyền lợi & Đãi ngộ
+                      </h4>
+                      <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+                        {selectedJob.benefits}
+                      </div>
+                    </section>
+                  )}
+
+                  {selectedJob.testAssignment && (
+                    <section className="p-6 rounded-2xl bg-[#0f172a] border border-[#334155]">
+                      <h4 className="text-[10px] font-black text-[#1392ec] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm">assignment</span> Đề bài kiểm tra (Case Study)
+                      </h4>
+                      <div className="text-slate-400 text-sm leading-relaxed whitespace-pre-wrap font-medium italic">
+                        {selectedJob.testAssignment}
+                      </div>
+                    </section>
+                  )}
+                </div>
+
+                <div className="space-y-8">
+                  <div className="p-6 rounded-2xl bg-[#0f172a] border border-[#334155] space-y-6">
+                    <div>
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Tiêu chí AI</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedJob.requirements.map((req, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-[#1392ec]/10 text-[#1392ec] text-[9px] font-black uppercase tracking-widest rounded border border-[#1392ec]/20">
+                            {req}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Điểm CV tối thiểu</h4>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#1392ec]" style={{ width: `${selectedJob.minScore || 75}%` }}></div>
+                        </div>
+                        <span className="text-sm font-black text-white italic">{selectedJob.minScore || 75}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
+                    <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-3">Trạng thái AI</h4>
+                    <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                      Hệ thống AI đã sẵn sàng quét hồ sơ cho vị trí này dựa trên các từ khóa và điểm số bạn đã thiết lập.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-[#334155] bg-[#0f172a]/50 flex justify-end gap-4">
+              <button 
+                onClick={() => setSelectedJob(null)}
+                className="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-800 transition-all"
+              >
+                Đóng
+              </button>
+              <button 
+                onClick={() => onEditJob(selectedJob)}
+                className="px-8 py-2.5 bg-[#1392ec] rounded-xl text-[10px] font-black uppercase tracking-widest text-white hover:bg-[#1181d1] shadow-xl shadow-[#1392ec]/20 transition-all"
+              >
+                Chỉnh sửa tin
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

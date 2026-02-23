@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Application, Job } from '../types';
+import { User, Application, Job, Notification } from '../types';
 import { backend } from '../services/backendService';
+import NotificationCenter from './NotificationCenter';
 
 interface SVProps {
   currentUser: User;
@@ -15,16 +16,28 @@ interface SVProps {
 const SV: React.FC<SVProps> = ({ currentUser, onLogout, onStartPractice, onNavigateToApplications, onNavigateToProfile, onNavigateToNewJobs }) => {
   const [stats, setStats] = useState({ totalApplications: 0, passedCount: 0, avgScore: 0, recentApps: [] as Application[] });
   const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     const userStats = backend.getStudentStats(currentUser.id);
     const jobs = backend.getJobs();
+    const notifs = backend.getNotifications(currentUser.id);
     setStats(userStats);
     setAllJobs(jobs);
+    setNotifications(notifs);
   }, [currentUser.id]);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleMarkAsRead = (id: string) => {
+    backend.markNotificationAsRead(id);
+    setNotifications(backend.getNotifications(currentUser.id));
+  };
 
   const getJobTitle = (jobId: string) => allJobs.find(j => j.id === jobId)?.title || "Vị trí tuyển dụng";
   const getCompanyName = (jobId: string) => allJobs.find(j => j.id === jobId)?.companyName || "Công ty đối tác";
+
+  const latestJobs = allJobs.slice(0, 3);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0f14] text-slate-100 font-display">
@@ -76,7 +89,13 @@ const SV: React.FC<SVProps> = ({ currentUser, onLogout, onStartPractice, onNavig
             <h2 className="text-2xl font-bold text-white tracking-tight leading-none mb-1">Chào mừng, {currentUser.name}!</h2>
             <p className="text-sm text-slate-400">Tài khoản: {currentUser.email}</p>
           </div>
-          <div onClick={onNavigateToProfile} className="h-10 w-10 rounded-full bg-slate-700 bg-cover bg-center border border-slate-600 shadow-md cursor-pointer" style={{ backgroundImage: `url('${currentUser.avatar}')` }}></div>
+          <div className="flex items-center gap-4">
+            <NotificationCenter 
+              notifications={notifications} 
+              onMarkAsRead={handleMarkAsRead} 
+            />
+            <div onClick={onNavigateToProfile} className="h-10 w-10 rounded-full bg-slate-700 bg-cover bg-center border border-slate-600 shadow-md cursor-pointer" style={{ backgroundImage: `url('${currentUser.avatar}')` }}></div>
+          </div>
         </header>
 
         <div className="p-8 space-y-8 max-w-[1400px] mx-auto">
@@ -129,6 +148,44 @@ const SV: React.FC<SVProps> = ({ currentUser, onLogout, onStartPractice, onNavig
                 ))}
               </div>
             )}
+          </section>
+
+          {/* Section: Việc làm mới nhất */}
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                Việc làm mới nhất
+              </h3>
+              <button onClick={onNavigateToNewJobs} className="text-[#1392ec] text-sm font-semibold hover:underline">Xem tất cả</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {latestJobs.map((job) => (
+                <div key={job.id} className="bg-[#111821] p-6 rounded-[2rem] border border-slate-800 shadow-xl group hover:border-emerald-500/50 transition-all cursor-pointer" onClick={onNavigateToNewJobs}>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="size-12 rounded-xl bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700">
+                      <img 
+                        src={`https://api.dicebear.com/7.x/initials/svg?seed=${job.companyName}`} 
+                        alt={job.companyName} 
+                        className="size-8"
+                      />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">{job.title}</h4>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{job.companyName}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800/50">
+                    <div className="flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-xs text-slate-500">location_on</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{job.location}</span>
+                    </div>
+                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{job.salary}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
         </div>
       </main>

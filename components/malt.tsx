@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 // Import User type
-import { User } from '../types';
+import { User, PracticeExercise, ExerciseResult } from '../types';
+import { backend } from '../services/backendService';
 
 interface MaltProps {
   // Added missing currentUser property
@@ -16,6 +17,29 @@ interface MaltProps {
 }
 
 const Malt: React.FC<MaltProps> = ({ currentUser, onBack, onLogout, onSelectExercise, onNavigateToApplications, onNavigateToProfile, onNavigateToNewJobs }) => {
+  const [exercises, setExercises] = useState<PracticeExercise[]>([]);
+  const [results, setResults] = useState<ExerciseResult[]>([]);
+  const [completionFilter, setCompletionFilter] = useState<'all' | 'done' | 'todo'>('all');
+
+  useEffect(() => {
+    const data = backend.getExercises();
+    setExercises(data);
+    const userResults = backend.getExerciseResults(currentUser.id);
+    setResults(userResults);
+  }, [currentUser.id]);
+
+  const getExerciseStatus = (exerciseId: string) => {
+    const result = results.find(r => r.exerciseId === exerciseId);
+    return result ? `${result.score}/100` : null;
+  };
+
+  const filteredExercises = exercises.filter(ex => {
+    const status = getExerciseStatus(ex.id);
+    if (completionFilter === 'done') return !!status;
+    if (completionFilter === 'todo') return !status;
+    return true;
+  });
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0f14] text-slate-100 font-display">
       {/* Sidebar */}
@@ -102,7 +126,7 @@ const Malt: React.FC<MaltProps> = ({ currentUser, onBack, onLogout, onSelectExer
         <div className="p-8 space-y-8 max-w-[1400px] mx-auto">
           {/* Filters Section */}
           <section className="bg-[#111821] p-6 rounded-2xl border border-slate-800 shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="relative">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Tìm kiếm đề tài</label>
                 <div className="relative">
@@ -115,8 +139,31 @@ const Malt: React.FC<MaltProps> = ({ currentUser, onBack, onLogout, onSelectExer
                 </div>
               </div>
               <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Trạng thái bài làm</label>
+                <div className="flex bg-[#0a0f14] p-1 rounded-xl border border-slate-700">
+                  <button 
+                    onClick={() => setCompletionFilter('all')}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${completionFilter === 'all' ? 'bg-[#1392ec] text-white shadow-lg shadow-[#1392ec]/20' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Tất cả
+                  </button>
+                  <button 
+                    onClick={() => setCompletionFilter('done')}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${completionFilter === 'done' ? 'bg-[#1392ec] text-white shadow-lg shadow-[#1392ec]/20' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Đã làm
+                  </button>
+                  <button 
+                    onClick={() => setCompletionFilter('todo')}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${completionFilter === 'todo' ? 'bg-[#1392ec] text-white shadow-lg shadow-[#1392ec]/20' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Chưa làm
+                  </button>
+                </div>
+              </div>
+              <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Lĩnh vực</label>
-                <select className="w-full bg-[#0a0f14] border-slate-700 rounded-xl py-2.5 px-4 text-sm focus:border-[#1392ec] focus:ring-[#1392ec] text-slate-200 outline-none transition-all">
+                <select className="w-full bg-[#0a0f14] border-slate-700 rounded-xl py-2.5 px-4 text-sm focus:border-[#1392ec] focus:ring-[#1392ec] text-slate-200 outline-none transition-all font-bold">
                   <option>Tất cả lĩnh vực</option>
                   <option>Marketing</option>
                   <option>IT & Software</option>
@@ -126,7 +173,7 @@ const Malt: React.FC<MaltProps> = ({ currentUser, onBack, onLogout, onSelectExer
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Công ty</label>
-                <select className="w-full bg-[#0a0f14] border-slate-700 rounded-xl py-2.5 px-4 text-sm focus:border-[#1392ec] focus:ring-[#1392ec] text-slate-200 outline-none transition-all">
+                <select className="w-full bg-[#0a0f14] border-slate-700 rounded-xl py-2.5 px-4 text-sm focus:border-[#1392ec] focus:ring-[#1392ec] text-slate-200 outline-none transition-all font-bold">
                   <option>Tất cả công ty</option>
                   <option>FPT Retail</option>
                   <option>VNG Corporation</option>
@@ -140,68 +187,72 @@ const Malt: React.FC<MaltProps> = ({ currentUser, onBack, onLogout, onSelectExer
           {/* Exercises Grid */}
           <section>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {[
-                { id: 'fpt-1', company: 'FPT Retail', title: 'Tối ưu chiến dịch CRM cho khách hàng Gen Z', desc: 'Xây dựng kịch bản chăm sóc khách hàng tự động dựa trên hành vi mua sắm tại cửa hàng.', tag: 'Marketing', time: '15 phút', difficulty: 'DỄ', diffColor: 'emerald', status: '85/100' },
-                { id: 'vng-1', company: 'VNG Corporation', title: 'Thiết kế kiến trúc AI Chatbot cho Zalo', desc: 'Lựa chọn mô hình ngôn ngữ và quy trình xử lý dữ liệu để tối ưu tốc độ phản hồi người dùng.', tag: 'IT & Software', time: '45 phút', difficulty: 'TRUNG BÌNH', diffColor: 'orange', status: null },
-                { id: 'shopee-1', company: 'Shopee Vietnam', title: 'Dự báo nhu cầu kho vận mùa Mega Sale', desc: 'Sử dụng dữ liệu lịch sử để dự đoán số lượng đơn hàng và phân bổ nhân sự hợp lý cho các trạm trung chuyển.', tag: 'Supply Chain', time: '60 phút', difficulty: 'KHÓ', diffColor: 'red', status: '94/100' },
-                { id: 'momo-1', company: 'Momo E-Wallet', title: 'Tăng tỷ lệ chuyển đổi nạp tiền điện thoại', desc: 'Cải thiện UI/UX của tính năng top-up để giảm thiểu số bước thao tác và tăng trải nghiệm người dùng.', tag: 'Product Design', time: '30 phút', difficulty: 'TRUNG BÌNH', diffColor: 'orange', status: null },
-              ].map((item, idx) => (
-                <div key={item.id} className="bg-[#111821] border border-slate-800 rounded-2xl overflow-hidden hover:border-[#1392ec]/50 transition-all flex flex-col group shadow-lg">
-                  <div className="h-40 bg-slate-800 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-cover bg-center opacity-40 transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url('https://picsum.photos/seed/${idx + 50}/600/300')` }}></div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#111821] to-transparent"></div>
-                    <div className="absolute top-4 left-4">
-                      <span className={`px-2.5 py-1 bg-${item.diffColor}-500/20 text-${item.diffColor}-500 text-[9px] font-black rounded-full border border-${item.diffColor}-500/30 backdrop-blur-md uppercase tracking-widest`}>
-                        {item.difficulty}
-                      </span>
-                    </div>
-                    <div className="absolute bottom-4 left-4 flex gap-2">
-                      <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-black rounded uppercase tracking-wider">{item.tag}</span>
-                      <span className="px-2 py-0.5 bg-slate-900/60 text-slate-300 text-[9px] font-black rounded flex items-center gap-1 border border-white/5 uppercase tracking-wider">
-                        <span className="material-symbols-outlined text-[12px]">schedule</span> {item.time}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-6 flex-1 flex flex-col">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Đưa ra bởi:</span>
-                      <span className="text-[10px] font-black text-white uppercase tracking-tight">{item.company}</span>
-                    </div>
-                    <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#1392ec] transition-colors leading-snug">
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 mb-6 line-clamp-2 leading-relaxed">
-                      {item.desc}
-                    </p>
-                    <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-800/50">
-                      <div>
-                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Trạng thái</p>
-                        {item.status ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-emerald-500 font-black text-sm">Đã đạt: {item.status}</span>
-                            <span className="material-symbols-outlined text-emerald-500 text-sm fill-1">verified</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 text-xs italic font-medium">Chưa thực hiện</span>
-                        )}
-                      </div>
-                      <button 
-                        onClick={() => onSelectExercise(item.id)}
-                        className={`flex items-center gap-2 px-5 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest shadow-lg ${
-                          item.status 
-                            ? 'bg-slate-800 text-[#1392ec] hover:bg-[#1392ec] hover:text-white' 
-                            : 'bg-[#1392ec] text-white hover:bg-[#1181d1] shadow-[#1392ec]/20'
-                        }`}
-                      >
-                        {item.status ? 'Làm lại' : 'Thử sức'}
-                        <span className="material-symbols-outlined text-base">
-                          {item.status ? 'refresh' : 'play_arrow'}
+              {filteredExercises.length > 0 ? filteredExercises.map((item, idx) => {
+                const status = getExerciseStatus(item.id);
+                return (
+                  <div key={item.id} className="bg-[#111821] border border-slate-800 rounded-2xl overflow-hidden hover:border-[#1392ec]/50 transition-all flex flex-col group shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="h-40 bg-slate-800 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-cover bg-center opacity-40 transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url('https://picsum.photos/seed/${idx + 50}/600/300')` }}></div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#111821] to-transparent"></div>
+                      <div className="absolute top-4 left-4">
+                        <span className={`px-2.5 py-1 bg-${item.diffColor}-500/20 text-${item.diffColor}-500 text-[9px] font-black rounded-full border border-${item.diffColor}-500/30 backdrop-blur-md uppercase tracking-widest`}>
+                          {item.difficulty}
                         </span>
-                      </button>
+                      </div>
+                      <div className="absolute bottom-4 left-4 flex gap-2">
+                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-black rounded uppercase tracking-wider">{item.tag}</span>
+                        <span className="px-2 py-0.5 bg-slate-900/60 text-slate-300 text-[9px] font-black rounded flex items-center gap-1 border border-white/5 uppercase tracking-wider">
+                          <span className="material-symbols-outlined text-[12px]">schedule</span> {item.time}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-6 flex-1 flex flex-col">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Đưa ra bởi:</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-tight">{item.company}</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#1392ec] transition-colors leading-snug">
+                        {item.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 mb-6 line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                      <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-800/50">
+                        <div>
+                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Trạng thái</p>
+                          {status ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-emerald-500 font-black text-sm">Đã đạt: {status}</span>
+                              <span className="material-symbols-outlined text-emerald-500 text-sm fill-1">verified</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 text-xs italic font-medium">Chưa thực hiện</span>
+                          )}
+                        </div>
+                        <button 
+                          onClick={() => onSelectExercise(item.id)}
+                          className={`flex items-center gap-2 px-5 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest shadow-lg ${
+                            status 
+                              ? 'bg-slate-800 text-[#1392ec] hover:bg-[#1392ec] hover:text-white' 
+                              : 'bg-[#1392ec] text-white hover:bg-[#1181d1] shadow-[#1392ec]/20'
+                          }`}
+                        >
+                          {status ? 'Làm lại' : 'Thử sức'}
+                          <span className="material-symbols-outlined text-base">
+                            {status ? 'refresh' : 'play_arrow'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   </div>
+                );
+              }) : (
+                <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-[#111821] rounded-3xl border border-slate-800 border-dashed">
+                  <span className="material-symbols-outlined text-6xl text-slate-700 mb-4">folder_off</span>
+                  <h4 className="text-xl font-bold text-slate-400 uppercase tracking-tight">Không tìm thấy bài tập nào</h4>
+                  <p className="text-sm text-slate-600 mt-2">Vui lòng thử thay đổi bộ lọc hoặc quay lại sau.</p>
                 </div>
-              ))}
+              )}
             </div>
           </section>
 

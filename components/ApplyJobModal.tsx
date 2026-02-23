@@ -10,13 +10,14 @@ interface ApplyJobModalProps {
     type: string;
   };
   onClose: () => void;
-  onSubmit: (cvContent: string, message: string) => void;
+  onSubmit: (cvContent: string, message: string, cvFileName: string) => void | Promise<void>;
 }
 
 const ApplyJobModal: React.FC<ApplyJobModalProps> = ({ currentUser, job, onClose, onSubmit }) => {
   const [message, setMessage] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,12 +35,24 @@ const ApplyJobModal: React.FC<ApplyJobModalProps> = ({ currentUser, job, onClose
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!fileName) {
       alert('Vui lòng tải lên CV của bạn.');
       return;
     }
-    onSubmit("CV Content Placeholder", message);
+    setIsSubmitting(true);
+    try {
+      // In a real app, we would extract text from the PDF.
+      // For this demo, we'll use a placeholder that includes the filename.
+      const simulatedCvContent = `Nội dung CV từ tệp: ${fileName}. 
+      Ứng viên: ${currentUser.name}. 
+      Vị trí ứng tuyển: ${job.title}.
+      Kỹ năng và kinh nghiệm phù hợp với vị trí Product Manager.`;
+      
+      await onSubmit(simulatedCvContent, message, fileName);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -132,10 +145,20 @@ const ApplyJobModal: React.FC<ApplyJobModalProps> = ({ currentUser, job, onClose
         <footer className="px-8 py-6 bg-[#0a0f14]/50 border-t border-slate-800 flex flex-col gap-4 shrink-0">
           <button 
             onClick={handleSubmit}
-            className="w-full bg-[#1392ec] hover:bg-[#1181d1] text-white font-black py-4 rounded-xl transition-all shadow-xl shadow-[#1392ec]/20 flex items-center justify-center gap-2 uppercase text-xs tracking-widest active:scale-[0.98]"
+            disabled={isSubmitting}
+            className={`w-full ${isSubmitting ? 'bg-slate-700' : 'bg-[#1392ec] hover:bg-[#1181d1]'} text-white font-black py-4 rounded-xl transition-all shadow-xl shadow-[#1392ec]/20 flex items-center justify-center gap-2 uppercase text-xs tracking-widest active:scale-[0.98]`}
           >
-            <span className="material-symbols-outlined text-lg">send</span>
-            Nộp CV ngay
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                Đang xử lý hồ sơ...
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-lg">send</span>
+                Nộp CV ngay
+              </>
+            )}
           </button>
           <p className="text-[9px] text-center text-slate-500 font-bold px-10 leading-relaxed">
             Bằng cách nhấn "Nộp CV ngay", bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật của chúng tôi. Thông tin của bạn sẽ được chuyển trực tiếp đến bộ phận nhân sự.

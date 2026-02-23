@@ -1,12 +1,55 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { evaluatePracticeSolution } from '../services/geminiService';
+import { backend } from '../services/backendService';
+import { User } from '../types';
 
 interface MA1_LTProps {
   onBack: () => void;
+  exerciseId: string;
+  jobId?: string | null;
+  currentUser: User;
 }
 
-const MA1_LT: React.FC<MA1_LTProps> = ({ onBack }) => {
+const MA1_LT: React.FC<MA1_LTProps> = ({ onBack, exerciseId, jobId, currentUser }) => {
   const [timeLeft, setTimeLeft] = useState(86400); // 24 giờ = 86400 giây
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationResult, setEvaluationResult] = useState<any>(null);
+  const [job, setJob] = useState<any>(null);
+  const [application, setApplication] = useState<any>(null);
+  const [draftName, setDraftName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (jobId) {
+      const foundJob = backend.getJobs().find(j => j.id === jobId);
+      setJob(foundJob);
+
+      const apps = backend.getApplicationsByStudent(currentUser.id);
+      const app = apps.find(a => a.jobId === jobId);
+      if (app) {
+        setApplication(app);
+        
+        // Timer logic - strictly based on testStartTime from backend
+        if (app.testStartTime) {
+          const startTime = new Date(app.testStartTime).getTime();
+          const now = new Date().getTime();
+          const elapsed = Math.floor((now - startTime) / 1000);
+          const remaining = Math.max(0, 86400 - elapsed);
+          setTimeLeft(remaining);
+        } else {
+          // Fallback if somehow missing, but backend should have set it
+          setTimeLeft(86400);
+        }
+
+        // Load draft if exists (mocking file as name for demo)
+        if (app.draftSolution) {
+          setDraftName(app.draftSolution);
+        }
+      }
+    }
+  }, [jobId, currentUser.id]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -22,8 +65,168 @@ const MA1_LT: React.FC<MA1_LTProps> = ({ onBack }) => {
     return [h, m, s].map((v) => v.toString().padStart(2, '0')).join(':');
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+      setDraftName(null);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleSaveDraft = () => {
+    if (application) {
+      backend.updateApplication(application.id, { 
+        draftSolution: selectedFile ? selectedFile.name : application.draftSolution 
+      });
+      alert('Đã lưu bản nháp thành công!');
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedFile && !draftName) {
+      alert('Vui lòng chọn tệp tin bài làm trước khi nộp.');
+      return;
+    }
+
+    if (!application || !job) return;
+
+    setIsEvaluating(true);
+    try {
+      const fileName = selectedFile ? selectedFile.name : draftName;
+      
+      // Update application status and submission
+      backend.updateApplication(application.id, {
+        status: 'TEST_SUBMITTED',
+        testSubmission: fileName || 'Unknown_File.pdf'
+      });
+
+      // Notify business user
+      // In this demo, we assume the business user ID is related to the company
+      // For simplicity, let's say the companyId is also the business user's ID or we can find it
+      // Usually there's a mapping, but here we'll just use a generic "business" notification
+      // or try to find a business user with that company name if we had a list.
+      // Since we don't have a clear business user ID mapping in the current simplified backend,
+      // we'll just add it to a generic business target or use the companyId as a proxy.
+      backend.addNotification(
+        job.companyId, 
+        'Ứng viên nộp bài test', 
+        `Ứng viên ${currentUser.name} đã nộp bài làm cho vị trí ${job.title}. Vui lòng kiểm tra và chấm điểm.`,
+        'info'
+      );
+
+      alert('Nộp bài thành công! Kết quả sẽ được thông báo sau khi doanh nghiệp chấm điểm.');
+      onBack();
+    } catch (error) {
+      console.error('Submission error:', error);
+      alert('Có lỗi xảy ra trong quá trình nộp bài.');
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0f14] text-slate-100 font-display">
+      {/* Hidden File Input */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        className="hidden" 
+        accept=".pdf"
+      />
+
+      {/* Evaluation Result Modal */}
+      {evaluationResult && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#111821] border border-slate-800 rounded-[2.5rem] w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl">
+            <div className="p-10">
+              <div className="flex justify-between items-start mb-10">
+                <div>
+                  <h3 className="text-3xl font-black text-white uppercase italic tracking-tight">Kết quả đánh giá AI</h3>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Dựa trên tiêu chuẩn tuyển dụng của {job ? job.companyName : 'MOMO E-Wallet'}</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="size-24 rounded-full border-4 border-[#1392ec] flex items-center justify-center bg-[#1392ec]/10 shadow-[0_0_20px_rgba(19,146,236,0.3)]">
+                    <span className="text-4xl font-black text-[#1392ec] italic">{evaluationResult.score}</span>
+                  </div>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">Điểm tổng kết</span>
+                </div>
+              </div>
+
+              <div className="space-y-8">
+                <section>
+                  <h4 className="text-sm font-black text-[#1392ec] uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">thumb_up</span> Điểm mạnh
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {evaluationResult.strengths.map((s: string, i: number) => (
+                      <div key={i} className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex gap-3">
+                        <span className="text-emerald-500 font-bold">✓</span>
+                        <p className="text-xs text-slate-300 font-medium">{s}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section>
+                  <h4 className="text-sm font-black text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">thumb_down</span> Điểm cần cải thiện
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {evaluationResult.weaknesses.map((w: string, i: number) => (
+                      <div key={i} className="p-4 bg-red-500/5 border border-red-500/20 rounded-xl flex gap-3">
+                        <span className="text-red-400 font-bold">!</span>
+                        <p className="text-xs text-slate-300 font-medium">{w}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section>
+                  <h4 className="text-sm font-black text-orange-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">lightbulb</span> Đề xuất từ chuyên gia
+                  </h4>
+                  <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-6 space-y-3">
+                    {evaluationResult.recommendations.map((r: string, i: number) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <span className="material-symbols-outlined text-orange-400 text-sm mt-0.5">auto_awesome</span>
+                        <p className="text-xs text-slate-300 font-medium leading-relaxed">{r}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <div className="pt-6 flex justify-center">
+                  <button 
+                    onClick={() => setEvaluationResult(null)}
+                    className="px-12 py-4 bg-[#1392ec] text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[#1181d1] transition-all shadow-xl shadow-[#1392ec]/20"
+                  >
+                    Đóng và Tiếp tục luyện tập
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {isEvaluating && (
+        <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-[#0a0f14]/90 backdrop-blur-md">
+          <div className="relative size-32 mb-8">
+            <div className="absolute inset-0 border-4 border-[#1392ec]/20 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-t-[#1392ec] rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl text-[#1392ec] animate-pulse">psychology</span>
+            </div>
+          </div>
+          <h3 className="text-xl font-black text-white uppercase italic tracking-tight animate-pulse">MindTrace AI đang chấm bài...</h3>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-3">Vui lòng đợi trong giây lát</p>
+        </div>
+      )}
       {/* Sidebar Workspace */}
       <aside className="w-64 border-r border-slate-800 bg-[#111821] flex flex-col h-full shrink-0">
         <div className="p-6 flex items-center gap-3 border-b border-slate-800/50">
@@ -75,11 +278,11 @@ const MA1_LT: React.FC<MA1_LTProps> = ({ onBack }) => {
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
             <div>
-              <h2 className="text-lg font-bold text-white tracking-tight">Làm bài: Tăng tỷ lệ nạp tiền MOMO</h2>
+              <h2 className="text-lg font-bold text-white tracking-tight">Làm bài: {job ? job.title : 'Tăng tỷ lệ nạp tiền MOMO'}</h2>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Đề tài: Product Design</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Đề tài: {job ? job.category : 'Product Design'}</span>
                 <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Đơn vị: MOMO E-WALLET</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Đơn vị: {job ? job.companyName : 'MOMO E-WALLET'}</span>
               </div>
             </div>
           </div>
@@ -102,26 +305,28 @@ const MA1_LT: React.FC<MA1_LTProps> = ({ onBack }) => {
             <div className="max-w-2xl ml-auto">
               <section className="mb-10">
                 <h3 className="text-sm font-bold text-[#1392ec] uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">info</span> Vấn đề hiện tại
+                  <span className="material-symbols-outlined text-lg">info</span> Nội dung đề bài
                 </h3>
                 <div className="bg-[#111821] border border-slate-800 rounded-xl p-8 space-y-4">
-                  <p className="text-slate-300 leading-relaxed">
-                    Tính năng nạp tiền điện thoại (Top-up) hiện đang gặp tỷ lệ rớt (drop-off) cao tại bước lựa chọn mệnh giá. Người dùng thường mất quá nhiều thời gian để tìm kiếm nhà mạng và mệnh giá mong muốn.
-                  </p>
-                  <ul className="space-y-4 pt-2">
-                    <li className="flex gap-3 text-sm text-slate-400">
-                      <span className="text-red-500 font-bold">•</span>
-                      <span>Giao diện lựa chọn nhà mạng chiếm quá nhiều không gian.</span>
-                    </li>
-                    <li className="flex gap-3 text-sm text-slate-400">
-                      <span className="text-red-500 font-bold">•</span>
-                      <span>Thiếu các gợi ý mệnh giá dựa trên lịch sử nạp tiền của người dùng.</span>
-                    </li>
-                    <li className="flex gap-3 text-sm text-slate-400">
-                      <span className="text-red-500 font-bold">•</span>
-                      <span>Thông báo lỗi khi nhập sai số điện thoại chưa thực sự trực quan.</span>
-                    </li>
-                  </ul>
+                  <div className="text-slate-300 leading-relaxed whitespace-pre-wrap">
+                    {job ? job.testAssignment : `Tính năng nạp tiền điện thoại (Top-up) hiện đang gặp tỷ lệ rớt (drop-off) cao tại bước lựa chọn mệnh giá. Người dùng thường mất quá nhiều thời gian để tìm kiếm nhà mạng và mệnh giá mong muốn.`}
+                  </div>
+                  {!job && (
+                    <ul className="space-y-4 pt-2">
+                      <li className="flex gap-3 text-sm text-slate-400">
+                        <span className="text-red-500 font-bold">•</span>
+                        <span>Giao diện lựa chọn nhà mạng chiếm quá nhiều không gian.</span>
+                      </li>
+                      <li className="flex gap-3 text-sm text-slate-400">
+                        <span className="text-red-500 font-bold">•</span>
+                        <span>Thiếu các gợi ý mệnh giá dựa trên lịch sử nạp tiền của người dùng.</span>
+                      </li>
+                      <li className="flex gap-3 text-sm text-slate-400">
+                        <span className="text-red-500 font-bold">•</span>
+                        <span>Thông báo lỗi khi nhập sai số điện thoại chưa thực sự trực quan.</span>
+                      </li>
+                    </ul>
+                  )}
                 </div>
               </section>
 
@@ -171,15 +376,28 @@ const MA1_LT: React.FC<MA1_LTProps> = ({ onBack }) => {
               </div>
 
               {/* Upload Box */}
-              <div className="flex-1 flex flex-col bg-[#111821] border-2 border-dashed border-slate-700 rounded-[2.5rem] p-12 items-center justify-center text-center transition-all hover:border-[#1392ec]/50 group mb-8">
+              <div 
+                onClick={triggerFileInput}
+                className="flex-1 flex flex-col bg-[#111821] border-2 border-dashed border-slate-700 rounded-[2.5rem] p-12 items-center justify-center text-center transition-all hover:border-[#1392ec]/50 group mb-8 cursor-pointer"
+              >
                 <div className="w-20 h-20 bg-[#1392ec]/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined text-4xl text-[#1392ec]">upload_file</span>
+                  <span className="material-symbols-outlined text-4xl text-[#1392ec]">
+                    {(selectedFile || draftName) ? 'check_circle' : 'upload_file'}
+                  </span>
                 </div>
-                <h4 className="text-xl font-bold text-white mb-2">Tải lên tệp tin bài làm</h4>
-                <p className="text-sm text-slate-500 mb-8 max-w-sm font-medium">Hỗ trợ định dạng PDF. Dung lượng tối đa 50MB.</p>
-                <button className="bg-[#1392ec] text-white px-10 py-3.5 rounded-xl font-bold hover:bg-[#1181d1] transition-all shadow-xl shadow-[#1392ec]/20 flex items-center gap-2 uppercase text-xs tracking-widest">
-                  <span className="material-symbols-outlined text-lg">add</span>
-                  Chọn tệp tin
+                <h4 className="text-xl font-bold text-white mb-2">
+                  {(selectedFile || draftName) ? 'Tệp tin đã chọn' : 'Tải lên tệp tin bài làm'}
+                </h4>
+                <p className="text-sm text-slate-500 mb-8 max-w-sm font-medium">
+                  {selectedFile ? selectedFile.name : (draftName ? `${draftName} (Bản nháp)` : 'Hỗ trợ định dạng PDF. Dung lượng tối đa 50MB.')}
+                </p>
+                <button 
+                  className="bg-[#1392ec] text-white px-10 py-3.5 rounded-xl font-bold hover:bg-[#1181d1] transition-all shadow-xl shadow-[#1392ec]/20 flex items-center gap-2 uppercase text-xs tracking-widest"
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {(selectedFile || draftName) ? 'sync' : 'add'}
+                  </span>
+                  {(selectedFile || draftName) ? 'Chọn tệp khác' : 'Chọn tệp tin'}
                 </button>
               </div>
 
@@ -202,10 +420,16 @@ const MA1_LT: React.FC<MA1_LTProps> = ({ onBack }) => {
         {/* Footer Actions */}
         <footer className="px-12 py-6 border-t border-slate-800 bg-[#111821] flex items-center justify-end">
           <div className="flex items-center gap-4">
-            <button className="px-8 py-3.5 border border-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-800 transition-all text-xs uppercase tracking-widest">
+            <button 
+              onClick={handleSaveDraft}
+              className="px-8 py-3.5 border border-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-800 transition-all text-xs uppercase tracking-widest"
+            >
               Lưu nháp
             </button>
-            <button className="px-12 py-3.5 bg-[#1392ec] text-white rounded-xl font-bold hover:bg-[#1181d1] transition-all shadow-xl shadow-[#1392ec]/30 flex items-center gap-2 text-xs uppercase tracking-widest">
+            <button 
+              onClick={handleSubmit}
+              className="px-12 py-3.5 bg-[#1392ec] text-white rounded-xl font-bold hover:bg-[#1181d1] transition-all shadow-xl shadow-[#1392ec]/30 flex items-center gap-2 text-xs uppercase tracking-widest"
+            >
               Nộp bài
               <span className="material-symbols-outlined text-lg">send</span>
             </button>

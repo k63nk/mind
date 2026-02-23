@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User } from '../types';
+import { backend } from '../services/backendService';
+import NotificationCenter from './NotificationCenter';
 
 interface BusinessDashboardProps {
   currentUser: User;
@@ -16,6 +18,14 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
   onNavigateToPostJob,
   onNavigateToCandidateManagement
 }) => {
+  const [notifications, setNotifications] = useState(backend.getNotifications(currentUser.id));
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleMarkAsRead = (id: string) => {
+    backend.markNotificationAsRead(id);
+    setNotifications(backend.getNotifications(currentUser.id));
+  };
+
   return (
     <div className="bg-[#0f172a] text-slate-100 antialiased h-screen flex overflow-hidden font-display">
       {/* Left Navigation Sidebar */}
@@ -104,10 +114,10 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 text-slate-400 hover:bg-[#1e293b] rounded-full relative transition-colors">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-[#0f172a]"></span>
-            </button>
+            <NotificationCenter 
+              notifications={notifications} 
+              onMarkAsRead={handleMarkAsRead} 
+            />
             <button className="p-2 text-slate-400 hover:bg-[#1e293b] rounded-full transition-colors">
               <span className="material-symbols-outlined">help_outline</span>
             </button>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { User } from '../types';
+import React, { useState, useEffect } from 'react';
+import { User, Job } from '../types';
+import { backend } from '../services/backendService';
 
 interface JobDetailProps {
   currentUser: User;
@@ -25,62 +26,38 @@ const JobDetail: React.FC<JobDetailProps> = ({
   onApply
 }) => {
   const [activeTab, setActiveTab] = useState<'jd' | 'req' | 'process'>('jd');
+  const [job, setJob] = useState<Job | null>(null);
 
-  const isJapaneseJob = jobId === 'job_japanese';
+  useEffect(() => {
+    if (jobId) {
+      const allJobs = backend.getJobs();
+      const foundJob = allJobs.find(j => j.id === jobId);
+      if (foundJob) {
+        setJob(foundJob);
+      }
+    }
+  }, [jobId]);
 
-  const jobData = isJapaneseJob ? {
-    title: "Chăm sóc khách hàng tiếng Nhật (N1/N2)",
-    company: "Concentrix Services Vietnam",
-    logo: "https://lh3.googleusercontent.com/aida-public/AB6AXuDgla8pYNa6rgVD9M_YqabKRV15fKfoZUHcCGsCsaMvUKAaFa6uRekZnPiiT5r1Czj-D6FoemPJfHaI6euMskN-04egyfmiMt60djxGIKsWaagZvLTC7uIojo0xcAVBwiTfK4aZv-zkMWj9NqiSDOZeBFNSVMu--0IcCSZpNiUnz1sqw-_x2bK0W4YELcbSwHA2XwphI1r-SV9ZL5dSPDCS-VEIYzCB3rfNHSPQR7Ql_vRWZDRl__XhhDhd5_8EHNibrTbDW-ft6xA",
-    location: "TP. Hồ Chí Minh",
-    salary: "23.2 Triệu VNĐ",
-    deadline: "31/12/2026",
-    isHot: true,
-    description: "Chào đón bạn gia nhập đại gia đình Concentrix! Với vị trí Chăm sóc khách hàng tiếng Nhật, bạn sẽ là gương mặt đại diện kết nối thương hiệu với người dùng tại thị trường Nhật Bản.",
-    tasks: [
-      "Tiếp nhận và giải đáp các thắc mắc của khách hàng Nhật Bản qua các kênh Email, Chat và Điện thoại.",
-      "Xử lý các yêu cầu về dịch vụ, hỗ trợ kỹ thuật cơ bản và hướng dẫn sử dụng sản phẩm.",
-      "Ghi nhận phản hồi của khách hàng để cải tiến quy trình và chất lượng dịch vụ.",
-      "Đảm bảo các chỉ số về mức độ hài lòng của khách hàng (CSAT) và thời gian phản hồi."
-    ],
-    benefits: [
-      { title: "Thưởng ngôn ngữ", desc: "Phụ cấp N1/N2 hàng tháng cực hấp dẫn.", icon: "card_giftcard" },
-      { title: "Bảo hiểm cao cấp", desc: "Gói chăm sóc sức khỏe quốc tế PVI.", icon: "health_and_safety" },
-      { title: "Đào tạo chuyên sâu", desc: "Lộ trình thăng tiến rõ ràng lên Leader/Manager.", icon: "school" },
-      { title: "Môi trường 5 sao", desc: "Pantry hiện đại, trà & cafe miễn phí mỗi ngày.", icon: "coffee" }
-    ],
-    process: [
-      { step: 1, title: "Nộp CV & AI chấm điểm", desc: "Hệ thống AI sẽ phân tích CV và phản hồi kết quả phù hợp ngay trong 5 phút.", icon: "description" },
-      { step: 2, title: "Làm bài Test thực tế 24h", desc: "Thử thách kỹ năng ngôn ngữ và xử lý tình huống thông qua bài thi online.", icon: "psychology" },
-      { step: 3, title: "Phỏng vấn", desc: "Trao đổi trực tiếp với bộ phận nhân sự và quản lý chuyên môn.", icon: "forum" }
-    ]
-  } : {
-    title: "Giảng viên Âm nhạc - FSC LA",
-    company: "Hệ thống giáo dục FPT",
-    logo: "https://lh3.googleusercontent.com/aida-public/AB6AXuAdPTxrqKEXYx-X2OHELB29LV53ujPagQq619XYDcQJZOIEMy40NtoRVC0vCRVyxoVBrLIh_VoCh_FHG-mvPLAYRLZuBDanTxh0TrYPuCFIM5KGTmVav2iWT6let8SvF4ixv_VNEB5hVwUVEWR8gxPIDiSocWp1JkldwNfIsgA1W1NHaINXeDkEhdCjhVHqOs2PyFyqGNMWotVb0ohLRw1oj1VMuUu5Xc0PB8WSsw9dFHSt0vmeuFimYbfw3IjEweteAZLVVAnd1ew",
-    location: "Tây Ninh",
-    salary: "Thỏa thuận",
-    deadline: "2026",
-    isHot: false,
-    description: "Chúng tôi đang tìm kiếm Giảng viên Âm nhạc nhiệt huyết để tham gia vào đội ngũ giáo dục tại phân hiệu Tây Ninh (FSC LA). Bạn sẽ là người truyền cảm hứng và dẫn dắt học sinh khám phá thế giới âm nhạc thông qua các chương trình đào tạo chuẩn quốc tế của FPT.",
-    tasks: [
-      "Giảng dạy các bộ môn âm nhạc (Piano, Guitar, hoặc Nhạc lý) theo giáo trình của nhà trường.",
-      "Xây dựng kế hoạch giảng dạy, chuẩn bị học liệu và tổ chức các hoạt động ngoại khóa âm nhạc.",
-      "Đánh giá năng lực học sinh định kỳ và hỗ trợ học sinh phát triển năng khiếu cá nhân.",
-      "Tham gia các buổi biểu diễn và sự kiện văn hóa nghệ thuật của Hệ thống giáo dục FPT."
-    ],
-    requirements: [
-      { title: "Bằng cấp", desc: "Tốt nghiệp Đại học chuyên ngành Âm nhạc hoặc Sư phạm Âm nhạc.", icon: "school" },
-      { title: "Kỹ năng", desc: "Sử dụng thành thạo ít nhất một loại nhạc cụ và có kiến thức nhạc lý vững vàng.", icon: "workspace_premium" },
-      { title: "Kinh nghiệm", desc: "Ưu tiên ứng viên có kinh nghiệm giảng dạy tại các trường quốc tế hoặc trung tâm nghệ thuật.", icon: "history_edu" },
-      { title: "Ngoại ngữ", desc: "Có khả năng giao tiếp và đọc hiểu tài liệu chuyên môn bằng tiếng Anh là một lợi thế.", icon: "interpreter_mode" }
-    ],
-    process: [
-      { step: 1, title: "Nộp hồ sơ năng lực", desc: "Gửi CV và Portfolio các dự án/buổi biểu diễn âm nhạc đã thực hiện.", icon: "description" },
-      { step: 2, title: "Thực hiện bài Test chuyên môn", desc: "Bài kiểm tra kỹ năng thị tấu hoặc trình diễn trực tiếp nhạc cụ sở trường.", icon: "psychology" },
-      { step: 3, title: "Phỏng vấn", desc: "Trao đổi trực tiếp với Hội đồng chuyên môn về phương pháp giảng dạy.", icon: "forum" }
-    ]
-  };
+  if (!job) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0a0f14] text-white">
+        <div className="text-center">
+          <div className="size-12 border-4 border-[#1392ec] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Đang tải thông tin việc làm...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const logoUrl = job.id === 'job_japanese' ? "https://lh3.googleusercontent.com/aida-public/AB6AXuDgla8pYNa6rgVD9M_YqabKRV15fKfoZUHcCGsCsaMvUKAaFa6uRekZnPiiT5r1Czj-D6FoemPJfHaI6euMskN-04egyfmiMt60djxGIKsWaagZvLTC7uIojo0xcAVBwiTfK4aZv-zkMWj9NqiSDOZeBFNSVMu--0IcCSZpNiUnz1sqw-_x2bK0W4YELcbSwHA2XwphI1r-SV9ZL5dSPDCS-VEIYzCB3rfNHSPQR7Ql_vRWZDRl__XhhDhd5_8EHNibrTbDW-ft6xA" : 
+                  job.id === 'job_music' ? "https://lh3.googleusercontent.com/aida-public/AB6AXuDIPSrOXnw5kzHdTKg2AETh5NS2CI1WSZhA4YadN1-EW3XjhR8ropC5xOImYzMU7M61VTNbljL-02BeT8RfYFa6epKahVQL7MtOUPNboPAGrleN-xGZwsMrSLTOAx14XKn5580B93s8MfdH4iOl6bZxCgyZLgavXWclSqIdRL8_Lw8yfzMt1dgQZFMgizmKztr4JNB9GEBEJEXAfQSQE-73n8wHMJXcMQy18VwjI4YkEEd1BgSKAtiWZxVqllPthfp86wHwvDTF4aI" :
+                  `https://api.dicebear.com/7.x/initials/svg?seed=${job.companyName}`;
+
+  const processSteps = [
+    { step: 1, title: "Nộp CV & AI chấm điểm", desc: "Hệ thống AI sẽ phân tích CV và phản hồi kết quả phù hợp ngay trong 5 phút.", icon: "description" },
+    { step: 2, title: "Làm bài Test thực tế", desc: "Thử thách kỹ năng chuyên môn thông qua bài thi online được thiết kế riêng.", icon: "psychology" },
+    { step: 3, title: "Phỏng vấn", desc: "Trao đổi trực tiếp với bộ phận nhân sự và quản lý chuyên môn.", icon: "forum" }
+  ];
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0f14] text-slate-100 font-display">
@@ -156,7 +133,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             </button>
             <div className="flex flex-col">
               <h2 className="text-xl font-bold text-white tracking-tight leading-none">Chi tiết việc làm</h2>
-              <p className="text-xs text-slate-400 mt-1">{jobData.title}</p>
+              <p className="text-xs text-slate-400 mt-1">{job.title}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -175,7 +152,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
             <span className="material-symbols-outlined text-[10px]">chevron_right</span>
             <button onClick={onNavigateToNewJobs} className="hover:text-[#1392ec] transition-colors">Việc làm</button>
             <span className="material-symbols-outlined text-[10px]">chevron_right</span>
-            <span className="text-slate-300 font-medium">{jobData.title}</span>
+            <span className="text-slate-300 font-medium">{job.title}</span>
           </nav>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -187,31 +164,31 @@ const JobDetail: React.FC<JobDetailProps> = ({
                 <div className="flex flex-col sm:flex-row gap-6 items-start relative z-10">
                   <div className="size-24 sm:size-32 rounded-xl bg-[#0a0f14] border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
                     <img 
-                      alt={jobData.company} 
+                      alt={job.companyName} 
                       className="w-full h-full object-contain opacity-80 p-2" 
-                      src={jobData.logo}
+                      src={logoUrl}
                     />
                   </div>
                   <div className="flex-1 space-y-3">
                     <div className="flex flex-wrap gap-2">
                       <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded-full uppercase tracking-wider border border-emerald-500/20">Đang tuyển</span>
-                      {jobData.isHot && <span className="px-3 py-1 bg-orange-500/10 text-orange-500 text-[10px] font-bold rounded-full uppercase tracking-wider border border-orange-500/20">Hot Job</span>}
+                      {job.isHot && <span className="px-3 py-1 bg-orange-500/10 text-orange-500 text-[10px] font-bold rounded-full uppercase tracking-wider border border-orange-500/20">Hot Job</span>}
                       <span className="px-3 py-1 bg-[#1392ec]/10 text-[#1392ec] text-[10px] font-bold rounded-full uppercase tracking-wider border border-[#1392ec]/20">Toàn thời gian</span>
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight uppercase italic">{jobData.title}</h1>
-                    <p className="text-base text-slate-400 font-bold uppercase tracking-wide">{jobData.company}</p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight uppercase italic">{job.title}</h1>
+                    <p className="text-base text-slate-400 font-bold uppercase tracking-wide">{job.companyName}</p>
                     <div className="flex flex-wrap gap-y-2 gap-x-6 pt-2">
                       <div className="flex items-center gap-2 text-slate-400">
                         <span className="material-symbols-outlined text-[#1392ec] text-sm">location_on</span>
-                        <span className="text-xs font-medium">{jobData.location}</span>
+                        <span className="text-xs font-medium">{job.location}</span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-400">
                         <span className="material-symbols-outlined text-[#1392ec] text-sm">payments</span>
-                        <span className="text-xs font-bold text-slate-200">{jobData.salary}</span>
+                        <span className="text-xs font-bold text-slate-200">{job.salary}</span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-400">
                         <span className="material-symbols-outlined text-[#1392ec] text-sm">event_available</span>
-                        <span className="text-xs font-medium">Hạn nộp: {jobData.deadline}</span>
+                        <span className="text-xs font-medium">Hạn nộp: {job.deadline}</span>
                       </div>
                     </div>
                   </div>
@@ -230,7 +207,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   onClick={() => setActiveTab('req')}
                   className={`px-2 pb-4 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'req' ? 'border-[#1392ec] text-[#1392ec]' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
                 >
-                  {isJapaneseJob ? 'Quyền lợi & Đãi ngộ' : 'Yêu cầu chuyên môn'}
+                  Quyền lợi & Yêu cầu
                 </button>
                 <button 
                   onClick={() => setActiveTab('process')}
@@ -248,37 +225,25 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       <div className="w-1 h-6 bg-[#1392ec] rounded-full"></div>
                       <h2 className="text-xl font-black text-white tracking-tight uppercase italic">Mô tả công việc (JD)</h2>
                     </div>
-                    <div className="text-slate-400 leading-relaxed space-y-4 text-sm font-medium">
-                      <p>{jobData.description}</p>
-                      <ul className="space-y-4 pl-1">
-                        {jobData.tasks.map((task, i) => (
-                          <li key={i} className="flex items-start gap-3">
-                            <span className="material-symbols-outlined text-[#1392ec] text-lg mt-0.5">check_circle</span>
-                            <span>{task}</span>
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="text-slate-400 leading-relaxed whitespace-pre-wrap text-sm font-medium">
+                      {job.description}
                     </div>
                   </section>
                 )}
 
                 {activeTab === 'req' && (
-                  <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1 h-6 bg-[#1392ec] rounded-full"></div>
-                      <h2 className="text-xl font-black text-white tracking-tight uppercase italic">{isJapaneseJob ? 'Quyền lợi & Đãi ngộ' : 'Yêu cầu chuyên môn'}</h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {(isJapaneseJob ? jobData.benefits : jobData.requirements)?.map((item: any, i: number) => (
-                        <div key={i} className="p-5 bg-[#111821] border border-slate-800 rounded-2xl flex gap-4 shadow-lg">
-                          <span className="material-symbols-outlined text-[#1392ec] bg-[#1392ec]/10 p-2.5 rounded-xl h-fit">{item.icon}</span>
-                          <div>
-                            <h4 className="text-white font-black text-xs uppercase tracking-widest mb-2">{item.title}</h4>
-                            <p className="text-slate-400 text-xs font-medium leading-relaxed">{item.desc}</p>
-                          </div>
+                  <section className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    {job.benefits && (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1 h-6 bg-[#1392ec] rounded-full"></div>
+                          <h2 className="text-xl font-black text-white tracking-tight uppercase italic">Quyền lợi & Đãi ngộ</h2>
                         </div>
-                      ))}
-                    </div>
+                        <div className="text-slate-400 leading-relaxed whitespace-pre-wrap text-sm font-medium">
+                          {job.benefits}
+                        </div>
+                      </div>
+                    )}
                   </section>
                 )}
 
@@ -289,7 +254,7 @@ const JobDetail: React.FC<JobDetailProps> = ({
                       <h2 className="text-xl font-black text-white tracking-tight uppercase italic">Quy trình ứng tuyển</h2>
                     </div>
                     <div className="relative pl-10 space-y-10 before:content-[''] before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-800">
-                      {jobData.process.map((step, i) => (
+                      {processSteps.map((step, i) => (
                         <div key={i} className="relative">
                           <div className={`absolute -left-[35px] top-0 size-8 rounded-full flex items-center justify-center text-xs font-black z-10 shadow-lg ${i === 0 ? 'bg-[#1392ec] text-white shadow-[#1392ec]/20' : 'bg-[#111821] border-2 border-[#1392ec] text-[#1392ec]'}`}>{step.step}</div>
                           <h4 className="text-white font-black text-sm uppercase tracking-widest mb-2">{step.title}</h4>
@@ -339,18 +304,18 @@ const JobDetail: React.FC<JobDetailProps> = ({
                   <div className="flex items-center gap-4 mb-4">
                     <div className="size-12 rounded-xl bg-white p-2 shrink-0 border border-slate-800">
                       <img 
-                        alt={jobData.company} 
+                        alt={job.companyName} 
                         className="w-full h-full object-contain" 
-                        src={jobData.logo}
+                        src={logoUrl}
                       />
                     </div>
                     <div>
-                      <h3 className="text-white font-black text-xs uppercase tracking-widest">{jobData.company}</h3>
-                      <p className="text-slate-500 text-[10px] font-bold uppercase tracking-tight">{isJapaneseJob ? 'Leading global provider' : 'Hệ thống giáo dục hàng đầu'}</p>
+                      <h3 className="text-white font-black text-xs uppercase tracking-widest">{job.companyName}</h3>
+                      <p className="text-slate-500 text-[10px] font-bold uppercase tracking-tight">Doanh nghiệp đối tác</p>
                     </div>
                   </div>
                   <p className="text-slate-400 text-xs leading-relaxed mb-6 font-medium">
-                    {isJapaneseJob ? 'Concentrix is a leading global provider of customer experience (CX) solutions and technology.' : 'Hệ thống Giáo dục FPT là hệ thống đào tạo khép kín từ Tiểu học tới Sau đại học với môi trường học tập hiện đại, sáng tạo và thực tiễn.'}
+                    MindTrace kết nối bạn với những doanh nghiệp hàng đầu, nơi bạn có thể phát huy tối đa năng lực chuyên môn.
                   </p>
                   <button className="w-full py-2.5 text-[#1392ec] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#1392ec]/10 rounded-xl transition-all border border-[#1392ec]/20">
                     Xem trang công ty
