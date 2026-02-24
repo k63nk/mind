@@ -229,6 +229,7 @@ class BackendService {
     
     const apps = Array.from(latestAppsMap.values());
     const passedCount = apps.filter(a => a.status === 'CV_PASSED' || a.status === 'HIRED' || a.status === 'TEST_SUBMITTED').length;
+    const interviewCount = apps.filter(a => a.status === 'INTERVIEW_CONFIRMED').length;
     const avgScore = apps.length > 0 
       ? Math.round(apps.reduce((acc, curr) => acc + curr.cvScore, 0) / apps.length) 
       : 0;
@@ -236,6 +237,7 @@ class BackendService {
     return {
       totalApplications: apps.length,
       passedCount,
+      interviewCount,
       avgScore,
       recentApps: apps.sort((a, b) => b.id.localeCompare(a.id)).slice(0, 3)
     };

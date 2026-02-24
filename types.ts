@@ -1,6 +1,6 @@
 
 export type Role = 'student' | 'business';
-export type ApplicationStatus = 'APPLIED' | 'CV_PASSED' | 'CV_REJECTED' | 'TEST_SUBMITTED' | 'HIRED' | 'FAILED';
+export type ApplicationStatus = 'APPLIED' | 'CV_PASSED' | 'CV_REJECTED' | 'TEST_SUBMITTED' | 'HIRED' | 'FAILED' | 'INTERVIEW_CONFIRMED' | 'INTERVIEW_REJECTED';
 export type JobCategory = 'IT' | 'Marketing' | 'Finance' | 'Design' | 'Business';
 
 export interface User {
@@ -56,6 +56,9 @@ export interface Application {
   testScore?: number;
   companyScore?: number;
   companyFeedback?: string;
+  interviewSlots?: string[];
+  interviewLocation?: string;
+  selectedInterviewSlot?: string;
 }
 
 export interface PracticeExercise {

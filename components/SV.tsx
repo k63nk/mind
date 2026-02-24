@@ -8,13 +8,13 @@ interface SVProps {
   currentUser: User;
   onLogout: () => void;
   onStartPractice: (practiceId: string) => void;
-  onNavigateToApplications: () => void;
+  onNavigateToApplications: (appId?: string) => void;
   onNavigateToProfile: () => void;
   onNavigateToNewJobs: () => void;
 }
 
 const SV: React.FC<SVProps> = ({ currentUser, onLogout, onStartPractice, onNavigateToApplications, onNavigateToProfile, onNavigateToNewJobs }) => {
-  const [stats, setStats] = useState({ totalApplications: 0, passedCount: 0, avgScore: 0, recentApps: [] as Application[] });
+  const [stats, setStats] = useState({ totalApplications: 0, passedCount: 0, interviewCount: 0, avgScore: 0, recentApps: [] as Application[] });
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -111,7 +111,7 @@ const SV: React.FC<SVProps> = ({ currentUser, onLogout, onStartPractice, onNavig
             </div>
             <div className="bg-[#111821] p-6 rounded-2xl border border-slate-800 shadow-xl">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Vòng phỏng vấn</p>
-              <h4 className="text-4xl font-black text-[#1392ec]">{stats.passedCount}</h4>
+              <h4 className="text-4xl font-black text-[#1392ec]">{stats.interviewCount}</h4>
             </div>
           </div>
 
@@ -132,17 +132,25 @@ const SV: React.FC<SVProps> = ({ currentUser, onLogout, onStartPractice, onNavig
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {stats.recentApps.map((app: any) => (
-                  <div key={app.id} className="bg-[#111821] p-6 rounded-[2rem] border border-slate-800 shadow-xl group">
+                  <div 
+                    key={app.id} 
+                    onClick={() => onNavigateToApplications(app.id)}
+                    className="bg-[#111821] p-6 rounded-[2rem] border border-slate-800 shadow-xl group cursor-pointer hover:border-[#1392ec]/50 transition-all"
+                  >
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
                       app.status === 'CV_PASSED' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
                       app.status === 'TEST_SUBMITTED' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                       app.status === 'HIRED' ? 'bg-emerald-600 text-white border-emerald-600' :
+                      app.status === 'INTERVIEW_CONFIRMED' ? 'bg-emerald-600 text-white border-emerald-600' :
+                      app.status === 'INTERVIEW_REJECTED' ? 'bg-red-600 text-white border-red-600' :
                       app.status === 'FAILED' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                       'bg-orange-500/10 text-orange-400 border-orange-500/20'
                     } mb-4 inline-block`}>
                       {app.status === 'CV_PASSED' ? 'Đã qua vòng CV' : 
                        app.status === 'TEST_SUBMITTED' ? 'Đã nộp bài test' :
-                       app.status === 'HIRED' ? 'Trúng tuyển' :
+                       app.status === 'HIRED' ? 'Vượt qua vòng sơ tuyển' :
+                       app.status === 'INTERVIEW_CONFIRMED' ? 'Đã xác nhận PV' :
+                       app.status === 'INTERVIEW_REJECTED' ? 'Đã từ chối PV' :
                        app.status === 'FAILED' ? 'Trượt' :
                        app.status}
                     </span>

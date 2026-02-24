@@ -102,7 +102,14 @@ const App: React.FC = () => {
       currentUser={currentUser}
       onLogout={handleLogout} 
       onStartPractice={() => setView('exercise_library')} 
-      onNavigateToApplications={() => setView('applications_management')}
+      onNavigateToApplications={(appId) => {
+        if (appId) {
+          setSelectedApplicationId(appId);
+        } else {
+          setSelectedApplicationId(null);
+        }
+        setView('applications_management');
+      }}
       onNavigateToProfile={() => setView('personal_profile')}
       onNavigateToNewJobs={() => setView('new_jobs')}
     />
@@ -122,6 +129,7 @@ const App: React.FC = () => {
       }}
       onNavigateToProfile={() => setView('personal_profile')}
       onNavigateToNewJobs={() => setView('new_jobs')}
+      initialSelectedAppId={selectedApplicationId}
     />
   );
 

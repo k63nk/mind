@@ -26,12 +26,16 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
   const [evaluationStatus, setEvaluationStatus] = useState<'HIRED' | 'FAILED'>('HIRED');
   const [companyFeedback, setCompanyFeedback] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [interviewSlots, setInterviewSlots] = useState<string[]>(['']);
+  const [interviewLocation, setInterviewLocation] = useState('');
 
   useEffect(() => {
     if (selectedApp) {
       setTestScore(selectedApp.testScore || 80);
       setEvaluationStatus((selectedApp.status === 'HIRED' || selectedApp.status === 'FAILED') ? selectedApp.status as 'HIRED' | 'FAILED' : 'HIRED');
       setCompanyFeedback(selectedApp.companyFeedback || '');
+      setInterviewSlots(selectedApp.interviewSlots || ['']);
+      setInterviewLocation(selectedApp.interviewLocation || '');
     }
   }, [selectedApp]);
 
@@ -118,7 +122,9 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
     const updatedApp = backend.updateApplication(selectedApp.id, {
       status: evaluationStatus,
       testScore: testScore,
-      companyFeedback: companyFeedback
+      companyFeedback: companyFeedback,
+      interviewSlots: evaluationStatus === 'HIRED' ? interviewSlots.filter(s => s.trim() !== '') : undefined,
+      interviewLocation: evaluationStatus === 'HIRED' ? interviewLocation : undefined
     });
 
     if (updatedApp) {
@@ -126,8 +132,8 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
       const job = jobs.find(j => j.id === selectedApp.jobId);
       backend.addNotification(
         selectedApp.studentId,
-        evaluationStatus === 'HIRED' ? 'Chúc mừng! Bạn đã trúng tuyển' : 'Kết quả ứng tuyển',
-        `Doanh nghiệp ${job?.companyName} đã gửi kết quả cho vị trí ${job?.title}. Trạng thái: ${evaluationStatus === 'HIRED' ? 'TRÚNG TUYỂN' : 'KHÔNG PHÙ HỢP'}.`,
+        evaluationStatus === 'HIRED' ? 'Chúc mừng! Bạn vượt qua vòng sơ tuyển' : 'Kết quả ứng tuyển',
+        `Doanh nghiệp ${job?.companyName} đã gửi kết quả cho vị trí ${job?.title}. Trạng thái: ${evaluationStatus === 'HIRED' ? 'VƯỢT QUA VÒNG SƠ TUYỂN' : 'KHÔNG PHÙ HỢP'}.`,
         evaluationStatus === 'HIRED' ? 'success' : 'info'
       );
 
@@ -397,14 +403,28 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
                             </div>
                           </td>
                           <td className="px-8 py-6">
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
-                              app.status === 'HIRED' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                              app.status === 'TEST_SUBMITTED' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                              app.status === 'FAILED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                              'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                            }`}>
-                              {app.status === 'TEST_SUBMITTED' ? 'Đang chờ chấm test' : app.status}
-                            </span>
+                            <div className="flex flex-col gap-2">
+                              <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                                app.status === 'HIRED' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                app.status === 'INTERVIEW_CONFIRMED' ? 'bg-emerald-600 text-white border-emerald-600' :
+                                app.status === 'INTERVIEW_REJECTED' ? 'bg-red-600 text-white border-red-600' :
+                                app.status === 'TEST_SUBMITTED' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                app.status === 'FAILED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                              }`}>
+                                {app.status === 'TEST_SUBMITTED' ? 'Đang chờ chấm test' : 
+                                 app.status === 'HIRED' ? 'Vượt qua vòng sơ tuyển' : 
+                                 app.status === 'INTERVIEW_CONFIRMED' ? 'Đã xác nhận PV' :
+                                 app.status === 'INTERVIEW_REJECTED' ? 'Đã từ chối PV' :
+                                 app.status === 'FAILED' ? 'Trượt' :
+                                 app.status}
+                              </span>
+                              {app.status === 'INTERVIEW_CONFIRMED' && app.selectedInterviewSlot && (
+                                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
+                                  Lịch: {app.selectedInterviewSlot}
+                                </p>
+                              )}
+                            </div>
                           </td>
                           <td className="px-8 py-6 text-right">
                             <button 
@@ -576,7 +596,7 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
                             }`}
                           >
                             <span className="material-symbols-outlined text-sm">check_circle</span>
-                            Trúng tuyển
+                            Vượt qua vòng sơ tuyển
                           </button>
                           <button 
                             onClick={() => setEvaluationStatus('FAILED')}
@@ -591,6 +611,73 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
                           </button>
                         </div>
                       </div>
+
+                      {selectedApp.status === 'INTERVIEW_CONFIRMED' && selectedApp.selectedInterviewSlot && (
+                        <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl mb-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="flex items-center gap-3 mb-4">
+                            <span className="material-symbols-outlined text-emerald-500">event_available</span>
+                            <h4 className="text-sm font-black text-white uppercase tracking-widest">Ứng viên đã xác nhận lịch phỏng vấn</h4>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest">
+                              Thời gian: {selectedApp.selectedInterviewSlot}
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                              Địa điểm: {selectedApp.interviewLocation}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {evaluationStatus === 'HIRED' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-black text-white uppercase tracking-widest">Lịch hẹn phỏng vấn</label>
+                              <button 
+                                onClick={() => setInterviewSlots([...interviewSlots, ''])}
+                                className="text-[10px] font-black text-[#1392ec] uppercase tracking-widest hover:underline"
+                              >
+                                + Thêm lịch
+                              </button>
+                            </div>
+                            {interviewSlots.map((slot, idx) => (
+                              <div key={idx} className="flex gap-2">
+                                <input 
+                                  type="text"
+                                  value={slot}
+                                  onChange={(e) => {
+                                    const newSlots = [...interviewSlots];
+                                    newSlots[idx] = e.target.value;
+                                    setInterviewSlots(newSlots);
+                                  }}
+                                  placeholder="Ví dụ: 09:00 - 25/02/2026"
+                                  className="flex-1 bg-[#0f172a] border border-slate-800 rounded-xl p-4 focus:border-[#1392ec] outline-none transition-all text-sm font-medium text-slate-200"
+                                />
+                                {interviewSlots.length > 1 && (
+                                  <button 
+                                    onClick={() => setInterviewSlots(interviewSlots.filter((_, i) => i !== idx))}
+                                    className="p-4 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined">delete</span>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-xs font-black text-white uppercase tracking-widest block">Địa điểm phỏng vấn</label>
+                            <input 
+                              type="text"
+                              value={interviewLocation}
+                              onChange={(e) => setInterviewLocation(e.target.value)}
+                              placeholder="Ví dụ: Tòa nhà TechNova, Quận 1 hoặc Google Meet"
+                              className="w-full bg-[#0f172a] border border-slate-800 rounded-xl p-4 focus:border-[#1392ec] outline-none transition-all text-sm font-medium text-slate-200"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       <div className="space-y-2">
                         <label className="text-xs font-black text-white uppercase tracking-widest block">Nhận xét từ doanh nghiệp</label>

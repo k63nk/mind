@@ -11,13 +11,23 @@ interface DonUngTuyenProps {
   onStartTest: (jobId: string, appId?: string) => void;
   onNavigateToProfile: () => void;
   onNavigateToNewJobs: () => void;
+  initialSelectedAppId?: string | null;
 }
 
-const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout, onNavigateToExercises, onStartTest, onNavigateToProfile, onNavigateToNewJobs }) => {
+const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout, onNavigateToExercises, onStartTest, onNavigateToProfile, onNavigateToNewJobs, initialSelectedAppId }) => {
   const [apps, setApps] = useState<Application[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [modalTimeLeft, setModalTimeLeft] = useState<number>(86400);
+  const [selectedSlot, setSelectedSlot] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedApp && selectedApp.selectedInterviewSlot) {
+      setSelectedSlot(selectedApp.selectedInterviewSlot);
+    } else {
+      setSelectedSlot('');
+    }
+  }, [selectedApp]);
 
   useEffect(() => {
     const userApps = backend.getApplicationsByStudent(currentUser.id);
@@ -32,9 +42,17 @@ const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout
     });
     
     const jobs = backend.getJobs();
-    setApps(Array.from(latestAppsMap.values()).reverse());
+    const finalApps = Array.from(latestAppsMap.values()).reverse();
+    setApps(finalApps);
     setAllJobs(jobs);
-  }, [currentUser.id]);
+
+    if (initialSelectedAppId) {
+      const appToSelect = finalApps.find(a => a.id === initialSelectedAppId);
+      if (appToSelect) {
+        setSelectedApp(appToSelect);
+      }
+    }
+  }, [currentUser.id, initialSelectedAppId]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -72,6 +90,54 @@ const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout
     const now = new Date().getTime();
     const elapsed = Math.floor((now - startTime) / 1000);
     return Math.max(0, 86400 - elapsed);
+  };
+
+  const handleConfirmInterview = () => {
+    if (!selectedApp || !selectedSlot) {
+      alert('Vui lòng chọn một lịch phỏng vấn.');
+      return;
+    }
+
+    const updated = backend.updateApplication(selectedApp.id, {
+      status: 'INTERVIEW_CONFIRMED',
+      selectedInterviewSlot: selectedSlot
+    });
+
+    if (updated) {
+      const job = getJobDetails(selectedApp.jobId);
+      backend.addNotification(
+        job?.companyId || '',
+        'Ứng viên xác nhận phỏng vấn',
+        `Ứng viên ${currentUser.name} đã xác nhận phỏng vấn cho vị trí ${job?.title} vào lúc ${selectedSlot}.`,
+        'success'
+      );
+      alert('Xác nhận phỏng vấn thành công!');
+      setSelectedApp(updated);
+      setApps(apps.map(a => a.id === updated.id ? updated : a));
+    }
+  };
+
+  const handleRejectInterview = () => {
+    if (!selectedApp) return;
+
+    if (!confirm('Bạn có chắc chắn muốn từ chối lịch phỏng vấn này?')) return;
+
+    const updated = backend.updateApplication(selectedApp.id, {
+      status: 'INTERVIEW_REJECTED'
+    });
+
+    if (updated) {
+      const job = getJobDetails(selectedApp.jobId);
+      backend.addNotification(
+        job?.companyId || '',
+        'Ứng viên từ chối phỏng vấn',
+        `Ứng viên ${currentUser.name} đã từ chối phỏng vấn cho vị trí ${job?.title}.`,
+        'warning'
+      );
+      alert('Đã từ chối phỏng vấn.');
+      setSelectedApp(updated);
+      setApps(apps.map(a => a.id === updated.id ? updated : a));
+    }
   };
 
   return (
@@ -205,13 +271,17 @@ const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout
                             <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
                               app.status === 'CV_PASSED' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                               app.status === 'HIRED' ? 'bg-emerald-600 text-white border-emerald-600' :
+                              app.status === 'INTERVIEW_CONFIRMED' ? 'bg-emerald-600 text-white border-emerald-600' :
+                              app.status === 'INTERVIEW_REJECTED' ? 'bg-red-600 text-white border-red-600' :
                               app.status === 'FAILED' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                               app.status === 'REJECTED' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                               app.status === 'TEST_SUBMITTED' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                               'bg-orange-500/10 text-orange-400 border-orange-500/20'
                             }`}>
                               {app.status === 'CV_PASSED' ? 'Đã qua vòng CV' :
-                               app.status === 'HIRED' ? 'Trúng tuyển' :
+                               app.status === 'HIRED' ? 'Vượt qua vòng sơ tuyển' :
+                               app.status === 'INTERVIEW_CONFIRMED' ? 'Đã xác nhận PV' :
+                               app.status === 'INTERVIEW_REJECTED' ? 'Đã từ chối PV' :
                                app.status === 'FAILED' ? 'Không trúng tuyển' :
                                app.status === 'REJECTED' ? 'CV không đạt' :
                                app.status === 'TEST_SUBMITTED' ? 'Đã nộp bài test' :
@@ -324,28 +394,103 @@ const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout
                   </section>
                 )}
 
-                {/* Final Result Section */}
-                {(selectedApp.status === 'HIRED' || selectedApp.status === 'FAILED') && (
-                  <section className={`p-6 rounded-2xl border ${selectedApp.status === 'HIRED' ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                {/* Final Result & Interview Section */}
+                {(selectedApp.status === 'HIRED' || selectedApp.status === 'INTERVIEW_CONFIRMED' || selectedApp.status === 'INTERVIEW_REJECTED' || selectedApp.status === 'FAILED') && (
+                  <section className={`p-6 rounded-2xl border ${selectedApp.status === 'FAILED' ? 'bg-red-500/5 border-red-500/20' : 'bg-emerald-500/5 border-emerald-500/20'}`}>
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-3">
-                        <span className={`material-symbols-outlined ${selectedApp.status === 'HIRED' ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {selectedApp.status === 'HIRED' ? 'verified' : 'cancel'}
+                        <span className={`material-symbols-outlined ${selectedApp.status === 'FAILED' ? 'text-red-500' : 'text-emerald-500'}`}>
+                          {selectedApp.status === 'FAILED' ? 'cancel' : 'verified'}
                         </span>
-                        <h4 className="text-sm font-black text-white uppercase tracking-widest">Kết quả đánh giá cuối cùng</h4>
+                        <h4 className="text-sm font-black text-white uppercase tracking-widest">Kết quả đánh giá chuyên môn</h4>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Điểm bài test</p>
-                        <span className={`text-xl font-bold ${selectedApp.status === 'HIRED' ? 'text-emerald-500' : 'text-red-500'}`}>{selectedApp.testScore}/100</span>
+                        <span className={`text-xl font-bold ${selectedApp.status === 'FAILED' ? 'text-red-500' : 'text-emerald-500'}`}>{selectedApp.testScore}/100</span>
                       </div>
                     </div>
-                    <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                    
+                    <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800 mb-6">
                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Phản hồi từ nhà tuyển dụng</p>
                       <p className="text-sm text-slate-300 leading-relaxed italic">"{selectedApp.companyFeedback || 'Không có phản hồi cụ thể.'}"</p>
                     </div>
+
+                    {selectedApp.status !== 'FAILED' && selectedApp.interviewSlots && selectedApp.interviewSlots.length > 0 && (
+                      <div className="space-y-6">
+                        <div className="p-4 bg-[#1392ec]/5 border border-[#1392ec]/20 rounded-xl">
+                          <div className="flex items-center gap-2 mb-4">
+                            <span className="material-symbols-outlined text-[#1392ec] text-sm">location_on</span>
+                            <p className="text-xs font-bold text-white uppercase tracking-widest">Địa điểm: {selectedApp.interviewLocation}</p>
+                          </div>
+                          
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Chọn lịch phỏng vấn phù hợp:</p>
+                          <div className="space-y-2">
+                            {selectedApp.interviewSlots.map((slot, idx) => (
+                              <label 
+                                key={idx} 
+                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                                  selectedSlot === slot 
+                                  ? 'bg-[#1392ec]/20 border-[#1392ec] text-white' 
+                                  : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700'
+                                } ${selectedApp.status !== 'HIRED' ? 'pointer-events-none opacity-80' : ''}`}
+                              >
+                                <input 
+                                  type="radio" 
+                                  name="interviewSlot" 
+                                  value={slot} 
+                                  checked={selectedSlot === slot}
+                                  onChange={(e) => setSelectedSlot(e.target.value)}
+                                  className="hidden"
+                                />
+                                <span className={`material-symbols-outlined text-sm ${selectedSlot === slot ? 'text-[#1392ec]' : 'text-slate-600'}`}>
+                                  {selectedSlot === slot ? 'radio_button_checked' : 'radio_button_unchecked'}
+                                </span>
+                                <span className="text-xs font-bold">{slot}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {selectedApp.status === 'HIRED' && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <button 
+                              onClick={handleConfirmInterview}
+                              className="py-4 bg-emerald-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                            >
+                              <span className="material-symbols-outlined text-sm">check_circle</span>
+                              Xác nhận phỏng vấn
+                            </button>
+                            <button 
+                              onClick={handleRejectInterview}
+                              className="py-4 bg-slate-800 text-red-500 border border-red-500/20 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-red-500/10 transition-all flex items-center justify-center gap-2"
+                            >
+                              <span className="material-symbols-outlined text-sm">cancel</span>
+                              Từ chối
+                            </button>
+                          </div>
+                        )}
+
+                        {selectedApp.status === 'INTERVIEW_CONFIRMED' && (
+                          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
+                            <p className="text-xs font-black text-emerald-500 uppercase tracking-widest italic">
+                              Bạn đã xác nhận phỏng vấn vào lúc: {selectedApp.selectedInterviewSlot}
+                            </p>
+                          </div>
+                        )}
+
+                        {selectedApp.status === 'INTERVIEW_REJECTED' && (
+                          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                            <p className="text-xs font-black text-red-500 uppercase tracking-widest italic">
+                              Bạn đã từ chối lịch phỏng vấn này.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="mt-6 text-center">
-                      <p className={`text-lg font-black uppercase italic tracking-tight ${selectedApp.status === 'HIRED' ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {selectedApp.status === 'HIRED' ? 'CHÚC MỪNG! BẠN ĐÃ TRÚNG TUYỂN' : 'RẤT TIẾC, BẠN CHƯA PHÙ HỢP LẦN NÀY'}
+                      <p className={`text-lg font-black uppercase italic tracking-tight ${selectedApp.status === 'FAILED' ? 'text-red-500' : 'text-emerald-500'}`}>
+                        {selectedApp.status === 'FAILED' ? 'RẤT TIẾC, BẠN CHƯA PHÙ HỢP LẦN NÀY' : 'CHÚC MỪNG! BẠN VƯỢT QUA VÒNG SƠ TUYỂN'}
                       </p>
                     </div>
                   </section>
