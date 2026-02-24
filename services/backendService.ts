@@ -216,8 +216,19 @@ class BackendService {
   }
 
   getStudentStats(studentId: string) {
-    const apps = this.getApplicationsByStudent(studentId);
-    const passedCount = apps.filter(a => a.status === 'CV_PASSED' || a.status === 'HIRED').length;
+    const allApps = this.getApplicationsByStudent(studentId);
+    
+    // Filter to latest per job
+    const latestAppsMap = new Map<string, Application>();
+    allApps.forEach(app => {
+      const existing = latestAppsMap.get(app.jobId);
+      if (!existing || app.id > existing.id) {
+        latestAppsMap.set(app.jobId, app);
+      }
+    });
+    
+    const apps = Array.from(latestAppsMap.values());
+    const passedCount = apps.filter(a => a.status === 'CV_PASSED' || a.status === 'HIRED' || a.status === 'TEST_SUBMITTED').length;
     const avgScore = apps.length > 0 
       ? Math.round(apps.reduce((acc, curr) => acc + curr.cvScore, 0) / apps.length) 
       : 0;
@@ -226,7 +237,7 @@ class BackendService {
       totalApplications: apps.length,
       passedCount,
       avgScore,
-      recentApps: apps.slice(-3).reverse()
+      recentApps: apps.sort((a, b) => b.id.localeCompare(a.id)).slice(0, 3)
     };
   }
 
@@ -397,6 +408,11 @@ class BackendService {
 
   getApplications(): Application[] {
     return this.getStorage<Application[]>(STORAGE_KEYS.APPLICATIONS, []);
+  }
+
+  getUserById(userId: string): User | null {
+    const users = this.getStorage<User[]>(STORAGE_KEYS.USERS, []);
+    return users.find(u => u.id === userId) || null;
   }
 
   markNotificationAsRead(notifId: string) {

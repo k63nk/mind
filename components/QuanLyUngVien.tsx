@@ -28,21 +28,49 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
+    if (selectedApp) {
+      setTestScore(selectedApp.testScore || 80);
+      setEvaluationStatus((selectedApp.status === 'HIRED' || selectedApp.status === 'FAILED') ? selectedApp.status as 'HIRED' | 'FAILED' : 'HIRED');
+      setCompanyFeedback(selectedApp.companyFeedback || '');
+    }
+  }, [selectedApp]);
+
+  useEffect(() => {
     const allJobs = backend.getJobs();
     // Filter jobs for this company (using currentUser.name or a fixed ID for demo)
     // In a real app, currentUser would have a companyId
-    const companyJobs = allJobs.filter(j => j.companyName === 'TechNova Global' || j.companyId === currentUser.id);
+    const companyJobs = allJobs.filter(j => 
+      j.companyName.toLowerCase().includes(currentUser.name.toLowerCase()) || 
+      j.companyId === currentUser.id ||
+      currentUser.name.toLowerCase().includes(j.companyName.toLowerCase())
+    );
     setJobs(companyJobs);
 
     const allApps = backend.getApplications();
     const companyJobIds = companyJobs.map(j => j.id);
     const companyApps = allApps.filter(app => companyJobIds.includes(app.jobId));
-    setApplications(companyApps);
+    
+    // Filter to keep only the latest application per student per job to avoid clutter
+    const latestAppsMap = new Map<string, Application>();
+    companyApps.forEach(app => {
+      const key = `${app.studentId}-${app.jobId}`;
+      const existing = latestAppsMap.get(key);
+      // Since IDs are timestamp-based (app_...), higher ID means newer
+      if (!existing || app.id > existing.id) {
+        latestAppsMap.set(key, app);
+      }
+    });
+
+    setApplications(Array.from(latestAppsMap.values()).reverse());
 
     setNotifications(backend.getNotifications(currentUser.id));
   }, [currentUser]);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const waitingCount = applications.filter(app => app.status === 'TEST_SUBMITTED').length;
+  const totalCandidates = applications.length;
+  const avgAIScore = applications.length > 0 
+    ? Math.round(applications.reduce((acc, curr) => acc + curr.cvScore, 0) / applications.length) 
+    : 0;
 
   const handleMarkAsRead = (id: string) => {
     backend.markNotificationAsRead(id);
@@ -54,12 +82,34 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
   };
 
   const getStudentInfo = (studentId: string) => {
-    // Mocking student info for demo
+    const user = backend.getUserById(studentId);
+    if (user) {
+      const names = user.name.split(' ');
+      const initial = names.length > 1 ? names[0][0] + names[names.length - 1][0] : user.name.substring(0, 2).toUpperCase();
+      return {
+        name: user.name,
+        email: user.email,
+        initial: initial
+      };
+    }
     return {
-      name: studentId === 's_001' ? 'Nguyễn Văn A' : 'Ứng viên MindTrace',
-      email: studentId === 's_001' ? 'vanna@student.edu.vn' : 'candidate@mindtrace.ai',
-      initial: studentId === 's_001' ? 'VA' : 'MT'
+      name: 'Ứng viên MindTrace',
+      email: 'candidate@mindtrace.ai',
+      initial: 'MT'
     };
+  };
+
+  const downloadFile = (fileName: string) => {
+    // Create a mock blob and download it
+    const blob = new Blob(["Mock content for " + fileName], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   };
 
   const handleSendResult = () => {
@@ -83,10 +133,21 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
 
       alert('Đã gửi kết quả thành công!');
       setSelectedApp(null);
-      // Refresh list
+      
+      // Refresh list with latest filter
       const allApps = backend.getApplications();
       const companyJobIds = jobs.map(j => j.id);
-      setApplications(allApps.filter(app => companyJobIds.includes(app.jobId)));
+      const companyApps = allApps.filter(app => companyJobIds.includes(app.jobId));
+      
+      const latestAppsMap = new Map<string, Application>();
+      companyApps.forEach(app => {
+        const key = `${app.studentId}-${app.jobId}`;
+        const existing = latestAppsMap.get(key);
+        if (!existing || app.id > existing.id) {
+          latestAppsMap.set(key, app);
+        }
+      });
+      setApplications(Array.from(latestAppsMap.values()).reverse());
     }
   };
 
@@ -231,28 +292,28 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
               <div className="p-6 rounded-2xl bg-[#1e293b] border border-[#334155] shadow-xl">
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Tổng ứng viên</p>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-4xl font-black text-white italic">1,284</h3>
+                  <h3 className="text-4xl font-black text-white italic">{totalCandidates.toLocaleString()}</h3>
                   <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-lg">+12.5%</span>
                 </div>
               </div>
               <div className="p-6 rounded-2xl bg-[#1e293b] border border-[#334155] shadow-xl">
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Đang chờ duyệt</p>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-4xl font-black text-white italic">42</h3>
+                  <h3 className="text-4xl font-black text-white italic">{waitingCount}</h3>
                   <span className="text-[10px] font-black text-amber-500 bg-amber-500/10 px-2 py-1 rounded-lg uppercase tracking-widest">Ổn định</span>
                 </div>
               </div>
               <div className="p-6 rounded-2xl bg-[#1e293b] border border-[#334155] shadow-xl">
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Mời phỏng vấn</p>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-4xl font-black text-white italic">15</h3>
+                  <h3 className="text-4xl font-black text-white italic">{applications.filter(a => a.status === 'HIRED').length}</h3>
                   <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-lg">+4%</span>
                 </div>
               </div>
               <div className="p-6 rounded-2xl bg-[#1e293b] border border-[#334155] shadow-xl">
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-2">Điểm AI trung bình</p>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-4xl font-black text-white italic">78<span className="text-sm not-italic text-slate-600 ml-1">/100</span></h3>
+                  <h3 className="text-4xl font-black text-white italic">{avgAIScore}<span className="text-sm not-italic text-slate-600 ml-1">/100</span></h3>
                   <div className="flex gap-1">
                     <span className="size-2 rounded-full bg-[#1392ec]"></span>
                     <span className="size-2 rounded-full bg-[#1392ec]"></span>
@@ -273,9 +334,14 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
                 </button>
                 <button 
                   onClick={() => setActiveFilter('waiting')}
-                  className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeFilter === 'waiting' ? 'bg-[#233948] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center gap-2 ${activeFilter === 'waiting' ? 'bg-[#233948] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   Đang chờ chấm test
+                  {waitingCount > 0 && (
+                    <span className="bg-[#1392ec] text-white size-5 rounded-full flex items-center justify-center text-[8px] font-black">
+                      {waitingCount}
+                    </span>
+                  )}
                 </button>
               </div>
               <div className="h-8 w-px bg-[#334155] hidden md:block"></div>
@@ -356,7 +422,7 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
               </div>
               {/* Pagination */}
               <div className="px-8 py-5 bg-[#0f172a]/20 border-t border-[#334155] flex items-center justify-between">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Hiển thị 1 - 5 của 1,284 ứng viên</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Hiển thị {filteredApps.length} ứng viên</p>
                 <div className="flex items-center gap-2">
                   <button className="size-8 flex items-center justify-center rounded-lg border border-[#334155] text-slate-500 hover:bg-slate-800 transition-colors disabled:opacity-30" disabled>
                     <span className="material-symbols-outlined text-lg">chevron_left</span>
@@ -447,7 +513,10 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
                             <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Hồ sơ CV</p>
                           </div>
                         </div>
-                        <button className="p-2 text-slate-500 hover:text-white transition-colors">
+                        <button 
+                          onClick={() => downloadFile(selectedApp.cvFileName)}
+                          className="p-2 text-slate-500 hover:text-white transition-colors"
+                        >
                           <span className="material-symbols-outlined">download</span>
                         </button>
                       </div>
@@ -463,7 +532,10 @@ const QuanLyUngVien: React.FC<QuanLyUngVienProps> = ({
                               <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Bài làm Test</p>
                             </div>
                           </div>
-                          <button className="p-2 text-slate-500 hover:text-white transition-colors">
+                          <button 
+                            onClick={() => downloadFile(selectedApp.testSubmission)}
+                            className="p-2 text-slate-500 hover:text-white transition-colors"
+                          >
                             <span className="material-symbols-outlined">download</span>
                           </button>
                         </div>

@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(backend.getCurrentUser());
   const [isInitializing, setIsInitializing] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -113,7 +114,12 @@ const App: React.FC = () => {
       onBack={() => setView('sv_dashboard')}
       onLogout={handleLogout}
       onNavigateToExercises={() => setView('exercise_library')}
-      onStartTest={() => setView('exercise_workspace')}
+      onStartTest={(jobId, appId) => {
+        setSelectedJobId(jobId);
+        setSelectedApplicationId(appId || null);
+        setSelectedExerciseId(null);
+        setView('exercise_workspace');
+      }}
       onNavigateToProfile={() => setView('personal_profile')}
       onNavigateToNewJobs={() => setView('new_jobs')}
     />
@@ -138,8 +144,9 @@ const App: React.FC = () => {
     <MA1_LT 
       exerciseId={selectedExerciseId || ''}
       jobId={!selectedExerciseId ? selectedJobId : undefined}
+      applicationId={!selectedExerciseId ? selectedApplicationId : undefined}
       currentUser={currentUser}
-      onBack={() => selectedExerciseId ? setView('exercise_library') : setView('sv_dashboard')} 
+      onBack={() => selectedExerciseId ? setView('exercise_library') : setView('applications_management')} 
     />
   );
 
@@ -208,6 +215,10 @@ const App: React.FC = () => {
       onBackToDashboard={() => setView('sv_dashboard')}
       onViewApplications={() => setView('applications_management')}
       onStartTest={() => {
+        if (currentApplication) {
+          setSelectedJobId(currentApplication.jobId);
+          setSelectedApplicationId(currentApplication.id);
+        }
         setSelectedExerciseId(null);
         setView('exercise_workspace');
       }}

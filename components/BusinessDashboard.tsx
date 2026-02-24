@@ -21,6 +21,18 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
   const [notifications, setNotifications] = useState(backend.getNotifications(currentUser.id));
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  const allJobs = backend.getJobs();
+  const companyJobs = allJobs.filter(j => j.companyName === 'TechNova Global' || j.companyId === currentUser.id);
+  const companyJobIds = companyJobs.map(j => j.id);
+  
+  const allApps = backend.getApplications();
+  const companyApps = allApps.filter(app => companyJobIds.includes(app.jobId));
+  
+  const totalCandidates = companyApps.length;
+  const hiredCount = companyApps.filter(a => a.status === 'HIRED').length;
+  const failedCount = companyApps.filter(a => a.status === 'FAILED').length;
+  const totalPosts = companyJobs.length;
+
   const handleMarkAsRead = (id: string) => {
     backend.markNotificationAsRead(id);
     setNotifications(backend.getNotifications(currentUser.id));
@@ -171,7 +183,7 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
                 </span>
               </div>
               <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Tổng số bài đăng</p>
-              <h3 className="text-4xl font-black mt-2 text-white italic">24</h3>
+              <h3 className="text-4xl font-black mt-2 text-white italic">{totalPosts}</h3>
             </div>
             {/* Total Candidates */}
             <div className="p-6 rounded-2xl bg-[#1e293b] border border-[#334155] shadow-xl">
@@ -184,7 +196,7 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
                 </span>
               </div>
               <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Tổng số ứng viên</p>
-              <h3 className="text-4xl font-black mt-2 text-white italic">1,284</h3>
+              <h3 className="text-4xl font-black mt-2 text-white italic">{totalCandidates.toLocaleString()}</h3>
             </div>
             {/* Pass */}
             <div className="p-6 rounded-2xl bg-[#1e293b] border border-[#334155] shadow-xl">
@@ -197,7 +209,7 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
                 </span>
               </div>
               <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Số lượng Đỗ (Pass)</p>
-              <h3 className="text-4xl font-black mt-2 text-white italic">432</h3>
+              <h3 className="text-4xl font-black mt-2 text-white italic">{hiredCount}</h3>
             </div>
             {/* Fail */}
             <div className="p-6 rounded-2xl bg-[#1e293b] border border-[#334155] shadow-xl">
@@ -210,7 +222,7 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({
                 </span>
               </div>
               <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Số lượng Trượt (Fail)</p>
-              <h3 className="text-4xl font-black mt-2 text-white italic">156</h3>
+              <h3 className="text-4xl font-black mt-2 text-white italic">{failedCount}</h3>
             </div>
           </div>
 

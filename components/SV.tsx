@@ -134,9 +134,17 @@ const SV: React.FC<SVProps> = ({ currentUser, onLogout, onStartPractice, onNavig
                 {stats.recentApps.map((app: any) => (
                   <div key={app.id} className="bg-[#111821] p-6 rounded-[2rem] border border-slate-800 shadow-xl group">
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                      app.status === 'CV_PASSED' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                      app.status === 'CV_PASSED' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                      app.status === 'TEST_SUBMITTED' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                      app.status === 'HIRED' ? 'bg-emerald-600 text-white border-emerald-600' :
+                      app.status === 'FAILED' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                      'bg-orange-500/10 text-orange-400 border-orange-500/20'
                     } mb-4 inline-block`}>
-                      {app.status}
+                      {app.status === 'CV_PASSED' ? 'Đã qua vòng CV' : 
+                       app.status === 'TEST_SUBMITTED' ? 'Đã nộp bài test' :
+                       app.status === 'HIRED' ? 'Trúng tuyển' :
+                       app.status === 'FAILED' ? 'Trượt' :
+                       app.status}
                     </span>
                     <h4 className="font-bold text-white mb-1 group-hover:text-[#1392ec] transition-colors">{getJobTitle(app.jobId)}</h4>
                     <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mb-4">{getCompanyName(app.jobId)}</p>

@@ -8,7 +8,7 @@ interface DonUngTuyenProps {
   onBack: () => void;
   onLogout: () => void;
   onNavigateToExercises: () => void;
-  onStartTest: (id: string) => void;
+  onStartTest: (jobId: string, appId?: string) => void;
   onNavigateToProfile: () => void;
   onNavigateToNewJobs: () => void;
 }
@@ -21,8 +21,18 @@ const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout
 
   useEffect(() => {
     const userApps = backend.getApplicationsByStudent(currentUser.id);
+    
+    // Filter to latest per job
+    const latestAppsMap = new Map<string, Application>();
+    userApps.forEach(app => {
+      const existing = latestAppsMap.get(app.jobId);
+      if (!existing || app.id > existing.id) {
+        latestAppsMap.set(app.jobId, app);
+      }
+    });
+    
     const jobs = backend.getJobs();
-    setApps(userApps);
+    setApps(Array.from(latestAppsMap.values()).reverse());
     setAllJobs(jobs);
   }, [currentUser.id]);
 
@@ -305,7 +315,7 @@ const DonUngTuyen: React.FC<DonUngTuyenProps> = ({ currentUser, onBack, onLogout
                         Chúc mừng! Bạn đã vượt qua vòng lọc CV. Hãy hoàn thành bài test chuyên môn để tiến vào vòng phỏng vấn.
                       </p>
                       <button 
-                        onClick={() => onStartTest(selectedApp.jobId)}
+                        onClick={() => onStartTest(selectedApp.jobId, selectedApp.id)}
                         className="w-full py-4 bg-orange-500 text-white rounded-xl font-black uppercase text-xs tracking-[0.2em] hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/20"
                       >
                         Tiếp tục làm bài test

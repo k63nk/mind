@@ -8,10 +8,11 @@ interface MA1_LTProps {
   onBack: () => void;
   exerciseId: string;
   jobId?: string | null;
+  applicationId?: string | null;
   currentUser: User;
 }
 
-const MA1_LT: React.FC<MA1_LTProps> = ({ onBack, exerciseId, jobId, currentUser }) => {
+const MA1_LT: React.FC<MA1_LTProps> = ({ onBack, exerciseId, jobId, applicationId, currentUser }) => {
   const [timeLeft, setTimeLeft] = useState(86400); // 24 giờ = 86400 giây
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -27,7 +28,18 @@ const MA1_LT: React.FC<MA1_LTProps> = ({ onBack, exerciseId, jobId, currentUser 
       setJob(foundJob);
 
       const apps = backend.getApplicationsByStudent(currentUser.id);
-      const app = apps.find(a => a.jobId === jobId);
+      
+      // If applicationId is provided, use it. Otherwise, find the best match.
+      let app = null;
+      if (applicationId) {
+        app = apps.find(a => a.id === applicationId);
+      } else {
+        // Fallback: find the one with CV_PASSED status for this job
+        app = apps.find(a => a.jobId === jobId && a.status === 'CV_PASSED');
+        // If still not found, just find any for this job
+        if (!app) app = apps.find(a => a.jobId === jobId);
+      }
+
       if (app) {
         setApplication(app);
         
@@ -86,30 +98,35 @@ const MA1_LT: React.FC<MA1_LTProps> = ({ onBack, exerciseId, jobId, currentUser 
   };
 
   const handleSubmit = async () => {
+    console.log('Submitting test...', { selectedFile, draftName, application, job });
+    
     if (!selectedFile && !draftName) {
       alert('Vui lòng chọn tệp tin bài làm trước khi nộp.');
       return;
     }
 
-    if (!application || !job) return;
+    if (!application || !job) {
+      console.error('Missing application or job info', { application, job });
+      alert('Lỗi: Không tìm thấy thông tin ứng tuyển hoặc công việc. Vui lòng thử lại.');
+      return;
+    }
 
     setIsEvaluating(true);
     try {
       const fileName = selectedFile ? selectedFile.name : draftName;
+      console.log('Updating application status to TEST_SUBMITTED', { appId: application.id, fileName });
       
       // Update application status and submission
-      backend.updateApplication(application.id, {
+      const updated = backend.updateApplication(application.id, {
         status: 'TEST_SUBMITTED',
         testSubmission: fileName || 'Unknown_File.pdf'
       });
 
+      if (!updated) {
+        throw new Error('Failed to update application in backend');
+      }
+
       // Notify business user
-      // In this demo, we assume the business user ID is related to the company
-      // For simplicity, let's say the companyId is also the business user's ID or we can find it
-      // Usually there's a mapping, but here we'll just use a generic "business" notification
-      // or try to find a business user with that company name if we had a list.
-      // Since we don't have a clear business user ID mapping in the current simplified backend,
-      // we'll just add it to a generic business target or use the companyId as a proxy.
       backend.addNotification(
         job.companyId, 
         'Ứng viên nộp bài test', 
@@ -121,7 +138,7 @@ const MA1_LT: React.FC<MA1_LTProps> = ({ onBack, exerciseId, jobId, currentUser 
       onBack();
     } catch (error) {
       console.error('Submission error:', error);
-      alert('Có lỗi xảy ra trong quá trình nộp bài.');
+      alert('Có lỗi xảy ra trong quá trình nộp bài: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsEvaluating(false);
     }
